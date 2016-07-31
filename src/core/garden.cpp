@@ -75,8 +75,12 @@ namespace arboretum {
 
                       size_t row_index;
                       size_t node_index;
+                      std::vector<SplitStreamStat> tmp(grad.size());
 
                       for(auto fid = 0; fid < data->columns; ++fid){
+                          for(int j = 0; j < data->rows; ++j){
+                              tmp[j].Clean();
+                            }
 
                           const std::vector<float> &feature_values = data->sorted_data[fid];
                           const std::vector<float> &grad_values = data->sorted_grad[fid];
@@ -88,25 +92,47 @@ namespace arboretum {
                               SplitStat &split = node_split[node_index];
                               const float feature_value = feature_values[j];
 
-                              if(split.count >= param.min_child_weight && split.last_value != feature_value
-                                 && (parent_node_stat.count - split.count) >= param.min_child_weight){
+//                              if(split.count >= param.min_child_weight && split.last_value != feature_value
+//                                 && (parent_node_stat.count - split.count) >= param.min_child_weight){
 
-                                  const double gain = split.GainForSplit(parent_node_stat);
+//                                  const double gain = split.GainForSplit(parent_node_stat);
 
-                                  if(gain > _bestSplit[node_index].gain){
+//                                  if(gain > _bestSplit[node_index].gain){
 
-                                      _bestSplit[node_index].fid = fid;
-                                      _bestSplit[node_index].gain = gain;
-                                      _bestSplit[node_index].split_value = (split.last_value + feature_value) * 0.5;
-                                      _bestSplit[node_index].count = split.count;
-                                      _bestSplit[node_index].sum_grad = split.sum_grad;
-                                    }
-                                }
+//                                      _bestSplit[node_index].fid = fid;
+//                                      _bestSplit[node_index].gain = gain;
+//                                      _bestSplit[node_index].split_value = (split.last_value + feature_value) * 0.5;
+//                                      _bestSplit[node_index].count = split.count;
+//                                      _bestSplit[node_index].sum_grad = split.sum_grad;
+//                                    }
+//                                }
+                              tmp[j].count = split.count;
+                              tmp[j].sum_grad = split.sum_grad;
+                              tmp[j].current_value = feature_value;
+                              tmp[j].prev_value = split.last_value;
+                              tmp[j].node = node_index;
 
                               split.count +=1;
                               split.sum_grad += grad_values[j];
                               split.last_value = feature_value;
                               }
+
+                          for(auto j = 0; j < data->rows; ++j){
+                              int node_index = tmp[j].node;
+                              const NodeStat &parent_node_stat = _nodeStat[node_index];
+                              if(tmp[j].count >= param.min_child_weight && (parent_node_stat.count - tmp[j].count) >= param.min_child_weight
+                                 && tmp[j].current_value != tmp[j].prev_value){
+                                  const double gain = SplitStat::GainForSplit(parent_node_stat, tmp[j].sum_grad, tmp[j].count);
+
+                                  if(gain > _bestSplit[node_index].gain){
+                                    _bestSplit[node_index].fid = fid;
+                                    _bestSplit[node_index].gain = gain;
+                                    _bestSplit[node_index].split_value = ( tmp[j].current_value + tmp[j].prev_value) * 0.5;
+                                    _bestSplit[node_index].count = tmp[j].count;
+                                    _bestSplit[node_index].sum_grad = tmp[j].sum_grad;
+                                  }
+                                }
+                            }
 
                           for(size_t i = 0, len = 1 << level; i < len; ++i){
                               NodeStat &node_stat = _nodeStat[i];

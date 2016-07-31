@@ -11,6 +11,27 @@ namespace arboretum {
 
     using namespace arboretum;
 
+    struct SplitStreamStat {
+      float current_value;
+      float prev_value;
+      int count;
+      int node;
+      double sum_grad;
+
+      SplitStreamStat() {
+        Clean();
+      }
+
+      void Clean(){
+        current_value = prev_value = 0.0;
+        count = 0;
+        node = -1;
+        sum_grad = 0.0;
+      }
+
+
+    };
+
     struct Split {
       float split_value;
       int fid;
@@ -68,6 +89,12 @@ namespace arboretum {
 
 
     struct SplitStat {
+      static inline double GainForSplit(const NodeStat& nodeStat, double sum_grad, int count){
+        const int rigth_count = nodeStat.count - count;
+        const double right_sum = nodeStat.sum_grad - sum_grad;
+        return right_sum * right_sum/rigth_count + sum_grad * sum_grad/count;
+      }
+
       int count;
       double sum_grad;
       float last_value;
