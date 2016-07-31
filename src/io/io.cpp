@@ -11,6 +11,7 @@ namespace arboretum {
     {
       _init = false;
       data.resize(columns);
+      sorted_data.resize(columns);
       index.resize(columns);
       grad.resize(rows);
       for(int i = 0; i < columns; ++i){
@@ -24,6 +25,11 @@ namespace arboretum {
           y.resize(y_hat.size(), initial_y);
           for(size_t i = 0; i < data.size(); ++i){
             index[i] = SortedIndex(i);
+            std::vector<float> tmp(data[i].size());
+            for(int j = 0; j < data[i].size(); ++j){
+                tmp[j] = data[i][index[i][j]];
+              }
+            sorted_data[i] = tmp;
           }
           _init = true;
         }

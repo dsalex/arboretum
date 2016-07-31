@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <limits>
+#include <omp.h>
 #include "garden.h"
 #include "param.h"
 #include "objective.h"
@@ -77,14 +78,14 @@ namespace arboretum {
 
                       for(auto fid = 0; fid < data->columns; ++fid){
 
-                          const std::vector<float> &feature_values = data->data[fid];
+                          const std::vector<float> &feature_values = data->sorted_data[fid];
                           std::vector<SplitStat> &node_split = _featureNodeSplitStat[fid];
                           for(auto j = 0; j < data->rows; ++j){
                               row_index = data->index[fid][j];
                               node_index = _rowIndex2Node[row_index];
                               const NodeStat &parent_node_stat = _nodeStat[node_index];
                               SplitStat &split = node_split[node_index];
-                              const float feature_value = feature_values[row_index];
+                              const float feature_value = feature_values[j];
 
                               if(split.count >= param.min_child_weight && split.last_value != feature_value
                                  && (parent_node_stat.count - split.count) >= param.min_child_weight){
