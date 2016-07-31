@@ -58,7 +58,7 @@ namespace arboretum {
           UpdateTree(i, tree);
           if(i == param.depth - 2)
             break;
-          UpdateNodeIndex(i, data);
+          UpdateNodeIndex(i, data, tree);
         }
 
         UpdateLeafWeight(tree);
@@ -79,6 +79,7 @@ namespace arboretum {
                       for(auto fid = 0; fid < data->columns; ++fid){
 
                           const std::vector<float> &feature_values = data->sorted_data[fid];
+                          const std::vector<float> &grad_values = data->sorted_grad[fid];
                           std::vector<SplitStat> &node_split = _featureNodeSplitStat[fid];
                           for(auto j = 0; j < data->rows; ++j){
                               row_index = data->index[fid][j];
@@ -103,7 +104,7 @@ namespace arboretum {
                                 }
 
                               split.count +=1;
-                              split.sum_grad += grad[row_index];
+                              split.sum_grad += grad_values[j];
                               split.last_value = feature_value;
                               }
 
@@ -146,18 +147,19 @@ namespace arboretum {
           }
       }
 
-      void UpdateNodeIndex(const unsigned int level, const io::DataMatrix *data){
+      void UpdateNodeIndex(const unsigned int level, const io::DataMatrix *data, RegTree *tree){
         unsigned int offset = Node::HeapOffset(level);
         unsigned int offset_next = Node::HeapOffset(level + 1);
         unsigned int node;
         for(int i = 0; i < data->rows; ++i){
             node = _rowIndex2Node[i];
             Split &best = _bestSplit[node];
-            if(data->data[best.fid][i] <= best.split_value){
-                _rowIndex2Node[i] = Node::Left(node + offset) - offset_next;
-              } else {
-                _rowIndex2Node[i] = Node::Right(node + offset) - offset_next;
-              }
+            _rowIndex2Node[i] = tree->ChildNode(node + offset, data->data[best.fid][i] <= best.split_value) - offset_next;
+//            if(data->data[best.fid][i] <= best.split_value){
+//                _rowIndex2Node[i] = Node::Left(node + offset) - offset_next;
+//              } else {
+//                _rowIndex2Node[i] = Node::Right(node + offset) - offset_next;
+//              }
           }
       }
 
@@ -167,8 +169,8 @@ namespace arboretum {
         for(unsigned int i = 0, len = (1 << (tree->depth - 2)); i < len; ++i){
             Split &best = _bestSplit[i];
             NodeStat &stat = _nodeStat[i];
-            tree->leaf_level[Node::Left(i + offset_1) - offset] = (best.sum_grad / best.count) * param.eta * (-1);
-            tree->leaf_level[Node::Right(i + offset_1) - offset] = ((stat.sum_grad - best.sum_grad) / (stat.count - best.count)) * param.eta * (-1);
+            tree->leaf_level[tree->ChildNode(i + offset_1, true) - offset] = (best.sum_grad / best.count) * param.eta * (-1);
+            tree->leaf_level[tree->ChildNode(i + offset_1, false) - offset] = ((stat.sum_grad - best.sum_grad) / (stat.count - best.count)) * param.eta * (-1);
           }
       }
     };

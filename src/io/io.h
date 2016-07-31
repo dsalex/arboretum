@@ -11,6 +11,7 @@ namespace arboretum {
       std::vector<std::vector<int> > index;
       std::vector<std::vector<float> > data;
       std::vector<std::vector<float> > sorted_data;
+      std::vector<std::vector<float> > sorted_grad;
       std::vector<float> y_hat;
       std::vector<float> y;
       std::vector<float> grad;

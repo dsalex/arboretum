@@ -14,6 +14,7 @@ namespace arboretum {
       sorted_data.resize(columns);
       index.resize(columns);
       grad.resize(rows);
+      sorted_grad.resize(rows);
       for(int i = 0; i < columns; ++i){
             data[i].resize(rows);
       }
@@ -51,6 +52,13 @@ namespace arboretum {
     void DataMatrix::UpdateGrad(){
       for(int i = 0; i < rows; ++i){
           grad[i] = _gradFunc(y[i], y_hat[i]);
+        }
+      for(int i = 0; i < columns; ++i){
+          std::vector<float> tmp(data[i].size());
+          for(int j = 0; j < data[i].size(); ++j){
+              tmp[j] = grad[index[i][j]];
+            }
+          sorted_grad[i] = tmp;
         }
 
     }

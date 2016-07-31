@@ -91,15 +91,29 @@ namespace arboretum {
       unsigned int depth;
       unsigned int offset;
       std::vector<float> leaf_level;
+      std::vector<int> _node_lookup [2] = { std::vector<int>(), std::vector<int>()};
 
       RegTree(unsigned int depth) : depth(depth){
+        _node_lookup[0].resize(1 << depth);
+        _node_lookup[1].resize(1 << depth);
+
+        for(int i = 0; i < (1 << depth); ++i){
+            _node_lookup[1][i] = Node::Left(i);
+            _node_lookup[0][i] = Node::Right(i);
+          }
+
         unsigned int nodes_num = (1 << depth) - 1;
         offset = (1 << (depth - 1)) - 1;
         nodes.reserve(nodes_num);
+
         for(size_t i = 0; i < nodes_num; ++i){
             nodes.push_back(Node(i));
           }
         leaf_level.resize(1 << (depth-1));
+      }
+
+      inline int ChildNode(int parent, bool isLeft) const {
+        return _node_lookup[isLeft][parent];
       }
 
       void Predict(arboretum::io::DataMatrix *data, std::vector<float> &out){
@@ -108,10 +122,7 @@ namespace arboretum {
             Node current_node = nodes[node_id];
             while(node_id < offset){
                 current_node = nodes[node_id];
-                if(data->data[current_node.fid][i] <= current_node.threshold)
-                  node_id = Node::Left(node_id);
-                else
-                  node_id = Node::Right(node_id);
+                node_id = ChildNode(node_id, data->data[current_node.fid][i] <= current_node.threshold);
               }
             out[i] += leaf_level[node_id - offset];
           }
