@@ -27,7 +27,7 @@ namespace arboretum {
           for(size_t i = 0; i < data.size(); ++i){
             index[i] = SortedIndex(i);
             std::vector<float> tmp(data[i].size());
-            for(int j = 0; j < data[i].size(); ++j){
+            for(size_t j = 0; j < data[i].size(); ++j){
                 tmp[j] = data[i][index[i][j]];
               }
             sorted_data[i] = tmp;
@@ -50,12 +50,12 @@ namespace arboretum {
     }
 
     void DataMatrix::UpdateGrad(){
-      for(int i = 0; i < rows; ++i){
+      for(size_t i = 0; i < rows; ++i){
           grad[i] = _gradFunc(y[i], y_hat[i]);
         }
-      for(int i = 0; i < columns; ++i){
+      for(size_t i = 0; i < columns; ++i){
           std::vector<float> tmp(data[i].size());
-          for(int j = 0; j < data[i].size(); ++j){
+          for(size_t j = 0; j < data[i].size(); ++j){
               tmp[j] = grad[index[i][j]];
             }
           sorted_grad[i] = tmp;

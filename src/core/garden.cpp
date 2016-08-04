@@ -17,7 +17,7 @@ namespace arboretum {
         _featureNodeSplitStat.resize(data->columns);
         _bestSplit.resize(1 << (param.depth - 2));
         _nodeStat.resize(1 << (param.depth - 2));
-        for(int fid = 0; fid < data->columns; ++fid){
+        for(size_t fid = 0; fid < data->columns; ++fid){
             _featureNodeSplitStat[fid].resize(1 << param.depth);
           }
     }
@@ -42,26 +42,24 @@ namespace arboretum {
                 _featureNodeSplitStat[i][j].Clean();
               }
           }
-        for(size_t i = 0; i < _nodeStat.size(); ++i){ // todo: clean not all
-            _nodeStat[i].Clean();
-            _bestSplit[i].Clean();
-          }
       }
 
-      virtual void GrowTree(RegTree *tree, const io::DataMatrix *data, std::vector<float> &grad) override {
+      virtual void GrowTree(RegTree *tree, const io::DataMatrix *data, const std::vector<float> &grad) override{
         InitGrowingTree();
 
         for(int i = 0; i < param.depth - 1; ++i){
           InitTreeLevel(i);
-          UpdateNodeStat(i, grad);
+          UpdateNodeStat(i, grad, tree);
           FindBestSplits(i, data, grad);
           UpdateTree(i, tree);
-          if(i == param.depth - 2)
-            break;
           UpdateNodeIndex(i, data, tree);
         }
 
         UpdateLeafWeight(tree);
+      }
+
+      virtual void PredictByGrownTree(RegTree *tree, const io::DataMatrix *data, std::vector<float> &out) override {
+        tree->Predict(data, _rowIndex2Node, out);
       }
 
     private:
@@ -85,7 +83,7 @@ namespace arboretum {
                           const std::vector<float> &feature_values = data->sorted_data[fid];
                           const std::vector<float> &grad_values = data->sorted_grad[fid];
                           std::vector<SplitStat> &node_split = _featureNodeSplitStat[fid];
-                          for(auto j = 0; j < data->rows; ++j){
+                          for(size_t j = 0; j < data->rows; ++j){
                               row_index = data->index[fid][j];
                               node_index = _rowIndex2Node[row_index];
                               const NodeStat &parent_node_stat = _nodeStat[node_index];
@@ -150,21 +148,41 @@ namespace arboretum {
                         }
 
       }
-      void UpdateNodeStat(const int level, const std::vector<float> &grad){
-        for(size_t i = 0; i < grad.size(); ++i){
-            int node = _rowIndex2Node[i];
-            _nodeStat[node].count++;
-            _nodeStat[node].sum_grad += grad[i];
+      void UpdateNodeStat(const int level, const std::vector<float> &grad, const RegTree *tree){
+        if(level != 0){
+        const unsigned int offset = Node::HeapOffset(level);
+        const unsigned int offset_next = Node::HeapOffset(level + 1);
+        std::vector<NodeStat> tmp(_nodeStat.size());
+        std::copy(_nodeStat.begin(), _nodeStat.end(), tmp.begin());
+        for(size_t i = 0, len = 1 << (level - 1); i < len; ++i){
+            _nodeStat[tree->ChildNode(i + offset, true) - offset_next].count = _bestSplit[i].count;
+            _nodeStat[tree->ChildNode(i + offset, true) - offset_next].sum_grad = _bestSplit[i].sum_grad;
+
+            _nodeStat[tree->ChildNode(i + offset, false) - offset_next].count =
+                tmp[i].count - _bestSplit[i].count;
+
+            _nodeStat[tree->ChildNode(i + offset, false) - offset_next].sum_grad =
+                tmp[i].sum_grad - _bestSplit[i].sum_grad;
+
+            _bestSplit[i].Clean();
           }
-        for(size_t i = 0; i < _nodeStat.size(); ++i){
+          } else {
+            for(size_t i = 0; i < grad.size(); ++i){
+                int node = _rowIndex2Node[i];
+                _nodeStat[node].count++;
+                _nodeStat[node].sum_grad += grad[i];
+              }
+          }
+        for(size_t i = 0, len = 1 << level; i < len; ++i){
             _nodeStat[i].gain = (_nodeStat[i].sum_grad * _nodeStat[i].sum_grad) / _nodeStat[i].count;
+            _bestSplit[i].Clean();
           }
       }
 
-      void UpdateTree(const int level, RegTree *tree){
+      void UpdateTree(const int level, RegTree *tree) const {
         unsigned int offset = Node::HeapOffset(level);
         for(size_t i = 0, len = 1 << level; i < len; ++i){
-            Split &best = _bestSplit[i];
+            const Split &best = _bestSplit[i];
             tree->nodes[i + offset].threshold = best.split_value;
             tree->nodes[i + offset].fid = best.fid;
             if(tree->nodes[i + offset].fid < 0){
@@ -177,24 +195,19 @@ namespace arboretum {
         unsigned int offset = Node::HeapOffset(level);
         unsigned int offset_next = Node::HeapOffset(level + 1);
         unsigned int node;
-        for(int i = 0; i < data->rows; ++i){
+        for(size_t i = 0; i < data->rows; ++i){
             node = _rowIndex2Node[i];
             Split &best = _bestSplit[node];
             _rowIndex2Node[i] = tree->ChildNode(node + offset, data->data[best.fid][i] <= best.split_value) - offset_next;
-//            if(data->data[best.fid][i] <= best.split_value){
-//                _rowIndex2Node[i] = Node::Left(node + offset) - offset_next;
-//              } else {
-//                _rowIndex2Node[i] = Node::Right(node + offset) - offset_next;
-//              }
           }
       }
 
-      void UpdateLeafWeight(RegTree *tree){
-        unsigned int offset_1 = Node::HeapOffset(tree->depth - 2);
-        unsigned int offset = Node::HeapOffset(tree->depth - 1);
+      void UpdateLeafWeight(RegTree *tree) const {
+        const unsigned int offset_1 = Node::HeapOffset(tree->depth - 2);
+        const unsigned int offset = Node::HeapOffset(tree->depth - 1);
         for(unsigned int i = 0, len = (1 << (tree->depth - 2)); i < len; ++i){
-            Split &best = _bestSplit[i];
-            NodeStat &stat = _nodeStat[i];
+            const Split &best = _bestSplit[i];
+            const NodeStat &stat = _nodeStat[i];
             tree->leaf_level[tree->ChildNode(i + offset_1, true) - offset] = (best.sum_grad / best.count) * param.eta * (-1);
             tree->leaf_level[tree->ChildNode(i + offset_1, false) - offset] = ((stat.sum_grad - best.sum_grad) / (stat.count - best.count)) * param.eta * (-1);
           }
@@ -226,7 +239,7 @@ namespace arboretum {
       _builder->InitGrowingTree();
 
       if(grad == NULL){
-          Predict(data, data->y);
+          SetInitial(data, data->y);
           data->UpdateGrad();
         } else {
           data->grad = std::vector<float>(grad, grad + data->rows);
@@ -235,13 +248,23 @@ namespace arboretum {
         RegTree *tree = new RegTree(param.depth);
         _builder->GrowTree(tree, data, data->grad);
         _trees.push_back(tree);
+        if(grad == NULL){
+            _builder->PredictByGrownTree(tree, data, data->y);
+          }
       }
 
-    void Garden::Predict(arboretum::io::DataMatrix *data, std::vector<float> &out){
+    void Garden::Predict(const arboretum::io::DataMatrix *data, std::vector<float> &out){
       out.resize(data->rows);
       std::fill(out.begin(), out.end(), param.initial_y);
       for(size_t i = 0; i < _trees.size(); ++i){
           _trees[i]->Predict(data, out);
+        }
+    }
+
+    void Garden::SetInitial(const arboretum::io::DataMatrix *data, std::vector<float> &out){
+      if(out.size() != data->rows){
+          out.resize(data->rows);
+          std::fill(out.begin(), out.end(), param.initial_y);
         }
     }
     }
