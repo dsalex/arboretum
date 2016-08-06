@@ -136,7 +136,7 @@ namespace arboretum {
           }
       }
 
-      void Predict(const arboretum::io::DataMatrix *data, const std::vector<unsigned int> &row2Node, std::vector<float> &out) const {
+      void Predict(const arboretum::io::DataMatrix *data, const std::vector<size_t> &row2Node, std::vector<float> &out) const {
         unsigned int node_id;
         for(size_t i = 0; i < data->rows; ++i){
             node_id = row2Node[i];
@@ -150,7 +150,7 @@ namespace arboretum {
     public:
       virtual void InitGrowingTree() = 0;
       virtual void InitTreeLevel(const int level) = 0;
-      virtual void GrowTree(RegTree *tree, const io::DataMatrix *data, const std::vector<float> &grad) = 0;
+      virtual void GrowTree(RegTree *tree, io::DataMatrix *data, const std::vector<float> &grad) = 0;
       virtual void PredictByGrownTree(RegTree *tree, const io::DataMatrix *data, std::vector<float> &out) = 0;
     };
 

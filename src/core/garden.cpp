@@ -44,12 +44,15 @@ namespace arboretum {
           }
       }
 
-      virtual void GrowTree(RegTree *tree, const io::DataMatrix *data, const std::vector<float> &grad) override{
+      virtual void GrowTree(RegTree *tree, io::DataMatrix *data, const std::vector<float> &grad) override{
         InitGrowingTree();
 
         for(int i = 0; i < param.depth - 1; ++i){
           InitTreeLevel(i);
           UpdateNodeStat(i, grad, tree);
+          if(i != 0){
+//              ResortDataByNode(i, data);
+            }
           FindBestSplits(i, data, grad);
           UpdateTree(i, tree);
           UpdateNodeIndex(i, data, tree);
@@ -64,7 +67,7 @@ namespace arboretum {
 
     private:
       const TreeParam param;
-      std::vector<unsigned int> _rowIndex2Node;
+      std::vector<size_t> _rowIndex2Node;
       std::vector<std::vector<SplitStat> > _featureNodeSplitStat;
       std::vector<NodeStat> _nodeStat;
       std::vector<Split> _bestSplit;
@@ -151,6 +154,32 @@ namespace arboretum {
             _nodeStat[i].gain = (_nodeStat[i].sum_grad * _nodeStat[i].sum_grad) / _nodeStat[i].count;
             _bestSplit[i].Clean();
           }
+      }
+
+      void ResortDataByNode(const int level, io::DataMatrix *data){
+        std::vector<int> node_offset(_nodeStat.size(), 0);
+        std::vector<int> node_counter(_nodeStat.size(), 0);
+        std::vector<size_t> aligned_row2node(_rowIndex2Node.size());
+        node_offset[0] = 0;
+        printf("node_offset[i] %d i %d \n", node_offset[0], 0);
+        for(size_t i = 1, len = 1 << level; i < len; ++i){
+            node_offset[i] = node_offset[i - 1] + _nodeStat[i - 1].count;
+            printf("node_offset[i] %d i %d \n", node_offset[i], i);
+          }
+        for(size_t i = 0, len = _rowIndex2Node.size(); i < len; ++i){
+            const int node = _rowIndex2Node[i];
+            aligned_row2node[i] = node_offset[node] + node_counter[node];
+            node_counter[node] += 1;
+          }
+        std::vector<size_t> tmp(_rowIndex2Node.size());
+        for(size_t i = 0; i < data->rows; ++i){
+            tmp[i] = _rowIndex2Node[aligned_row2node[i]];
+            printf("node %d aligned_row2node[i] %d \n", tmp[i], aligned_row2node[i]);
+          }
+
+        std::copy(tmp.begin(), tmp.end(), _rowIndex2Node.begin());
+//        _rowIndex2Node = aligned_row2node;
+        data->Reorder(aligned_row2node);
       }
 
       void UpdateTree(const int level, RegTree *tree) const {

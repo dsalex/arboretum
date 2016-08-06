@@ -20,6 +20,50 @@ namespace arboretum {
       }
     }
 
+    void DataMatrix::Reorder(std::vector<size_t> &sorting_order){
+      for(size_t j = 0; j < columns; ++j){
+          std::vector<float> tmp(rows);
+          for(size_t i = 0; i < rows; ++i){
+              tmp[i] = data[j][sorting_order[i]];
+            }
+          std::copy(tmp.begin(), tmp.end(), data[j].begin());
+
+          for(size_t i = 0; i < rows; ++i){
+              tmp[i] = sorted_data[j][sorting_order[i]];
+            }
+          std::copy(tmp.begin(), tmp.end(), sorted_data[j].begin());
+
+          for(size_t i = 0; i < rows; ++i){
+              tmp[i] = sorted_grad[j][sorting_order[i]];
+            }
+          std::copy(tmp.begin(), tmp.end(), sorted_grad[j].begin());
+        }
+
+      for(size_t j = 0; j < columns; ++j){
+          std::vector<int> tmp(rows);
+          for(size_t i = 0; i < rows; ++i){
+              tmp[i] = index[j][sorting_order[i]];
+            }
+          std::copy(tmp.begin(), tmp.end(), index[j].begin());
+        }
+
+      std::vector<float> tmp(rows);
+      for(size_t i = 0; i < rows; ++i){
+          tmp[i] = grad[sorting_order[i]];
+        }
+      std::copy(tmp.begin(), tmp.end(), grad.begin());
+
+      for(size_t i = 0; i < rows; ++i){
+          tmp[i] = y[sorting_order[i]];
+        }
+      std::copy(tmp.begin(), tmp.end(), y.begin());
+
+      for(size_t i = 0; i < rows; ++i){
+          tmp[i] = y_hat[sorting_order[i]];
+        }
+      std::copy(tmp.begin(), tmp.end(), y_hat.begin());
+    }
+
     void DataMatrix::Init(const float initial_y, std::function<float const(const float, const float)> func){
       if(!_init){
           _gradFunc = func;

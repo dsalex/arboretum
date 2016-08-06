@@ -19,6 +19,7 @@ namespace arboretum {
       size_t columns;
       void Init(const float initial_y, std::function<float const(const float, const float)> func);
       void UpdateGrad();
+      void Reorder(std::vector<size_t> &sorting_order);
       DataMatrix(int rows, int columns);
     private:
       std::function<float const(const float, const float)> _gradFunc;
