@@ -20,48 +20,45 @@ namespace arboretum {
       }
     }
 
-    void DataMatrix::Reorder(std::vector<size_t> &sorting_order){
-      for(size_t j = 0; j < columns; ++j){
-          std::vector<float> tmp(rows);
-          for(size_t i = 0; i < rows; ++i){
-              tmp[i] = data[j][sorting_order[i]];
-            }
-          std::copy(tmp.begin(), tmp.end(), data[j].begin());
-
-          for(size_t i = 0; i < rows; ++i){
-              tmp[i] = sorted_data[j][sorting_order[i]];
-            }
-          std::copy(tmp.begin(), tmp.end(), sorted_data[j].begin());
-
-          for(size_t i = 0; i < rows; ++i){
-              tmp[i] = sorted_grad[j][sorting_order[i]];
-            }
-          std::copy(tmp.begin(), tmp.end(), sorted_grad[j].begin());
+    void DataMatrix::Reorder(std::vector<size_t> &rowIndex2Node, std::vector<int> &node_offset){
+      printf("====== offset \n");
+      for(size_t i = 0; i < node_offset.size(); ++i){
+          printf("node %d offset %d \n", i, node_offset[i]);
         }
 
       for(size_t j = 0; j < columns; ++j){
-          std::vector<int> tmp(rows);
+          std::vector<int> counter(node_offset);
+          std::vector<int> tmp_int(rows);
+          std::vector<float> tmp_value(rows);
+          std::vector<float> tmp_grad(rows);
+          size_t node;
+          size_t row_index;
+
+          printf("resort for %d ======== \n", j);
+
           for(size_t i = 0; i < rows; ++i){
-              tmp[i] = index[j][sorting_order[i]];
+              row_index = index[j][i];
+              node = rowIndex2Node[row_index];
+
+              printf("initial row_index %d node %d value %f grad %f \n",
+                     row_index, node, data[j][row_index], grad[row_index]);
+
+              tmp_int[counter[node]] = counter[node];
+              tmp_value[counter[node]] = sorted_data[j][i];
+              tmp_grad[counter[node]] = sorted_grad[j][i];
+              counter[node]++;
             }
-          std::copy(tmp.begin(), tmp.end(), index[j].begin());
+          std::copy(tmp_int.begin(), tmp_int.end(), index[j].begin());
+          std::copy(tmp_grad.begin(), tmp_grad.end(), sorted_grad[j].begin());
+          std::copy(tmp_value.begin(), tmp_value.end(), sorted_data[j].begin());
+
+
+          for(size_t i = 0; i < rows; ++i){
+//              node = rowIndex2Node[i];
+              printf("i %d value %f grad %f \n", i, data[j][index[j][i]], grad[index[j][i]]);
+            }
         }
 
-      std::vector<float> tmp(rows);
-      for(size_t i = 0; i < rows; ++i){
-          tmp[i] = grad[sorting_order[i]];
-        }
-      std::copy(tmp.begin(), tmp.end(), grad.begin());
-
-      for(size_t i = 0; i < rows; ++i){
-          tmp[i] = y[sorting_order[i]];
-        }
-      std::copy(tmp.begin(), tmp.end(), y.begin());
-
-      for(size_t i = 0; i < rows; ++i){
-          tmp[i] = y_hat[sorting_order[i]];
-        }
-      std::copy(tmp.begin(), tmp.end(), y_hat.begin());
     }
 
     void DataMatrix::Init(const float initial_y, std::function<float const(const float, const float)> func){
