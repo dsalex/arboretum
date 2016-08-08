@@ -86,15 +86,15 @@ namespace arboretum {
                       for(size_t fid = 0; fid < data->columns; ++fid){
 //                          printf("split search ============= %d \n", fid);
 
-                          const std::vector<float> &feature_values = data->sorted_data[fid];
-                          const std::vector<float> &grad_values = data->sorted_grad[fid];
+                          const std::vector<float> &feature_values = data->data[fid];
+                          const std::vector<float> &grad_values = data->grad;
                           std::vector<SplitStat> &node_split = _featureNodeSplitStat[fid];
                           for(size_t j = 0; j < data->rows; ++j){
                               row_index = data->index[fid][j];
                               node_index = _rowIndex2Node[row_index];
                               const NodeStat &parent_node_stat = _nodeStat[node_index];
                               SplitStat &split = node_split[node_index];
-                              const float feature_value = feature_values[j];
+                              const float feature_value = feature_values[row_index];
 
 //                              printf("find split i %d row_index %d node_index %d value %f \n",
 //                                     j, row_index, node_index, feature_value);
@@ -115,7 +115,7 @@ namespace arboretum {
                                 }
 
                               split.count +=1;
-                              split.sum_grad += grad_values[j];
+                              split.sum_grad += grad_values[row_index];
                               split.last_value = feature_value;
                               }
 
@@ -189,7 +189,7 @@ namespace arboretum {
             printf("node %d aligned_row2node[i] %d \n", tmp[i], aligned_row2node[i]);
           }
 
-        data->Reorder(_rowIndex2Node, node_offset);
+        data->Reorder(_rowIndex2Node, aligned_row2node);
 
         std::copy(tmp.begin(), tmp.end(), _rowIndex2Node.begin());
       }
@@ -213,11 +213,8 @@ namespace arboretum {
         for(size_t i = 0; i < data->rows; ++i){
             node = _rowIndex2Node[i];
             Split &best = _bestSplit[node];
+            printf("new i %d node %d count %d \n", i, node, best.count);
             _rowIndex2Node[i] = tree->ChildNode(node + offset, data->data[best.fid][i] <= best.split_value) - offset_next;
-          }
-        printf("========= final nodes ============= \n");
-        for(size_t i = 0; i < data->rows; ++i){
-            printf("i %d node %d grad %f \n", i, _rowIndex2Node[i], data->sorted_grad[0][i]);
           }
       }
 
