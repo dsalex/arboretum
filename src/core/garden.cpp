@@ -53,15 +53,9 @@ namespace arboretum {
           if(i != 0){
               ResortDataByNode(i, data);
             }
-          for(size_t i = 0; i < data->rows; ++i){
-              printf("i %d node %d \n", i, _rowIndex2Node[i]);
-            }
           FindBestSplits(i, data, grad);
           UpdateTree(i, tree);
           UpdateNodeIndex(i, data, tree);
-          for(size_t i = 0; i < data->rows; ++i){
-              printf("after i %d node %d \n", i, _rowIndex2Node[i]);
-            }
         }
 
         UpdateLeafWeight(tree);
@@ -84,8 +78,6 @@ namespace arboretum {
                       size_t node_index;
 
                       for(size_t fid = 0; fid < data->columns; ++fid){
-//                          printf("split search ============= %d \n", fid);
-
                           const std::vector<float> &feature_values = data->data[fid];
                           const std::vector<float> &grad_values = data->grad;
                           std::vector<SplitStat> &node_split = _featureNodeSplitStat[fid];
@@ -95,9 +87,6 @@ namespace arboretum {
                               const NodeStat &parent_node_stat = _nodeStat[node_index];
                               SplitStat &split = node_split[node_index];
                               const float feature_value = feature_values[row_index];
-
-//                              printf("find split i %d row_index %d node_index %d value %f \n",
-//                                     j, row_index, node_index, feature_value);
 
                               if(split.count >= param.min_child_weight && split.last_value != feature_value
                                  && (parent_node_stat.count - split.count) >= param.min_child_weight){
@@ -167,26 +156,22 @@ namespace arboretum {
       }
 
       void ResortDataByNode(const int level, io::DataMatrix *data){
-        printf("level %d \n", level);
         std::vector<int> node_offset(_nodeStat.size(), 0);
         std::vector<int> node_counter(_nodeStat.size(), 0);
         std::vector<size_t> aligned_row2node(_rowIndex2Node.size());
         node_offset[0] = 0;
-        printf("node_offset[i] %d i %d \n", node_offset[0], 0);
+
         for(size_t i = 1, len = 1 << level; i < len; ++i){
             node_offset[i] = node_offset[i - 1] + _nodeStat[i - 1].count;
-            printf("node_offset[i] %d i %d \n", node_offset[i], i);
           }
         for(size_t i = 0, len = _rowIndex2Node.size(); i < len; ++i){
             const int node = _rowIndex2Node[i];
             aligned_row2node[i] = node_offset[node] + node_counter[node];
-            printf("i %d  _rowIndex2Node %d aligned_row2node %d \n", i, _rowIndex2Node[i], aligned_row2node[i]);
             node_counter[node] += 1;
           }
         std::vector<size_t> tmp(_rowIndex2Node.size());
         for(size_t i = 0; i < data->rows; ++i){
             tmp[aligned_row2node[i]] = _rowIndex2Node[i];
-            printf("node %d aligned_row2node[i] %d \n", tmp[i], aligned_row2node[i]);
           }
 
         data->Reorder(_rowIndex2Node, aligned_row2node);
@@ -213,7 +198,6 @@ namespace arboretum {
         for(size_t i = 0; i < data->rows; ++i){
             node = _rowIndex2Node[i];
             Split &best = _bestSplit[node];
-            printf("new i %d node %d count %d \n", i, node, best.count);
             _rowIndex2Node[i] = tree->ChildNode(node + offset, data->data[best.fid][i] <= best.split_value) - offset_next;
           }
       }
@@ -223,7 +207,6 @@ namespace arboretum {
         const unsigned int offset = Node::HeapOffset(tree->depth - 1);
         for(unsigned int i = 0, len = (1 << (tree->depth - 2)); i < len; ++i){
             const Split &best = _bestSplit[i];
-            printf("UpdateLeafWeight node %d sum %f count %d fid %d \n", i, best.sum_grad, best.count, best.fid);
             const NodeStat &stat = _nodeStat[i];
             tree->leaf_level[tree->ChildNode(i + offset_1, true) - offset] = (best.sum_grad / best.count) * param.eta * (-1);
             tree->leaf_level[tree->ChildNode(i + offset_1, false) - offset] = ((stat.sum_grad - best.sum_grad) / (stat.count - best.count)) * param.eta * (-1);

@@ -26,6 +26,14 @@ namespace arboretum {
           tmp_grad[aligned_row2node[i]] = grad[i];
         }
       std::copy(tmp_grad.begin(), tmp_grad.end(), grad.begin());
+      for(size_t i = 0; i < rows; ++i){
+          tmp_grad[aligned_row2node[i]] = y[i];
+        }
+      std::copy(tmp_grad.begin(), tmp_grad.end(), y.begin());
+      for(size_t i = 0; i < rows; ++i){
+          tmp_grad[aligned_row2node[i]] = y_hat[i];
+        }
+      std::copy(tmp_grad.begin(), tmp_grad.end(), y_hat.begin());
       for(size_t j = 0; j < columns; ++j){
           std::vector<int> tmp_index(rows);
           std::vector<float> tmp_data(rows);
