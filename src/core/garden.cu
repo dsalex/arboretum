@@ -120,7 +120,7 @@ namespace arboretum {
 
     private:
       const TreeParam param;
-      std::vector<unsigned int> _rowIndex2Node;
+      host_vector<unsigned int> _rowIndex2Node;
       std::vector<std::vector<SplitStat> > _featureNodeSplitStat;
       std::vector<NodeStat> _nodeStat;
       std::vector<Split> _bestSplit;
@@ -227,8 +227,11 @@ namespace arboretum {
                                                      fvalue.end(), fvalue.end() - 1)),
                               gain_functor(param.min_child_weight));
 
-                          device_vector<int> max_key(1 << level, -1);
-                          device_vector<thrust::tuple<double, size_t>> max_value(1 << level);
+                          device_vector<int> max_key_d(1 << level, -1);
+                          device_vector<thrust::tuple<double, size_t>> max_value_d(1 << level);
+
+                          host_vector<int> max_key(1 << level, -1);
+                          host_vector<thrust::tuple<double, size_t>> max_value(1 << level);
 
                           device_vector<size_t> index(data->rows);
                           thrust::sequence(index.begin(), index.end());
@@ -242,10 +245,13 @@ namespace arboretum {
                           thrust::reduce_by_key(segments.begin(),
                                                 segments.end(),
                                                 tuple_iterator,
-                                                max_key.begin(),
-                                                max_value.begin(),
+                                                max_key_d.begin(),
+                                                max_value_d.begin(),
                                                 binary_pred,
                                                 binary_op);
+
+                          thrust::copy(max_key_d.begin(), max_key_d.end(), max_key.begin());
+                          thrust::copy(max_value_d.begin(), max_value_d.end(), max_value.begin());
 
                           for(size_t i = 0; i < max_key.size(); ++i){
                               const int node_index = max_key[i];
