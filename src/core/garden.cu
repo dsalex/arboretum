@@ -173,11 +173,17 @@ namespace arboretum {
 
                           device_vector<double> parent_node_sum(lenght);
                           device_vector<size_t> parent_node_count(lenght);
+                          {
+                            device_vector<double> parent_node_sum_h(lenght);
+                            device_vector<size_t> parent_node_count_h(lenght);
 
-                          for(size_t i = 0; i < lenght; ++i){
-                              parent_node_count[i] = _nodeStat[i].count;
-                              parent_node_sum[i] = _nodeStat[i].sum_grad;
-                            }
+                            for(size_t i = 0; i < lenght; ++i){
+                                parent_node_count_h[i] = _nodeStat[i].count;
+                                parent_node_sum_h[i] = _nodeStat[i].sum_grad;
+                              }
+                            parent_node_sum = parent_node_sum_h;
+                            parent_node_count = parent_node_count_h;
+                          }
 
                           device_vector<double> parent_node_sum_vector(data->rows, 0.0);
                           device_vector<size_t> parent_node_count_vector(data->rows, 0);
