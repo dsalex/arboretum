@@ -142,6 +142,8 @@ namespace arboretum {
                                          row2Node.begin(),
                                          segments.begin());
 
+                          printf("gather \n");
+
                           thrust::gather(position.begin(),
                                          position.end(),
                                          data->grad_device.begin(),
