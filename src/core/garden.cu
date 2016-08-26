@@ -147,7 +147,7 @@ namespace arboretum {
                                                      segments.end(),
                                                      thrust::make_zip_iterator(
                                                        thrust::make_tuple(grad.begin(),
-                                                                          fvalue.begin() + 1)
+                                                       fvalue.begin() + 1)
                                                        ));
 
                           device_vector<double> sum(data->rows);
@@ -228,19 +228,20 @@ namespace arboretum {
                               gain_functor(param.min_child_weight));
 
                           device_vector<int> max_key_d(1 << level, -1);
-                          device_vector<thrust::tuple<double, size_t>> max_value_d(1 << level);
+                          device_vector<thrust::tuple<double, float, float, size_t, double>> max_value_d(1 << level);
 
                           host_vector<int> max_key(1 << level, -1);
-                          host_vector<thrust::tuple<double, size_t>> max_value(1 << level);
+                          host_vector<thrust::tuple<double, float, float, size_t, double>> max_value(1 << level);
 
-                          device_vector<size_t> index(data->rows);
-                          thrust::sequence(index.begin(), index.end());
 
                           auto tuple_iterator = thrust::make_zip_iterator(
                                 thrust::make_tuple(gain.begin(),
-                                                   index.begin()));
+                                                   fvalue.begin(),
+                                                   fvalue.begin() + 1,
+                                                   count.begin(),
+                                                   sum.begin()));
 
-                          max_gain_functor< thrust::tuple<double, size_t> > binary_op;
+                          max_gain_functor< thrust::tuple<double, float, float, size_t, double> > binary_op;
 
                           thrust::reduce_by_key(segments.begin(),
                                                 segments.end(),
@@ -255,17 +256,20 @@ namespace arboretum {
 
                           for(size_t i = 0; i < max_key.size(); ++i){
                               const int node_index = max_key[i];
-                              const thrust::tuple<double, size_t> t = max_value[i];
+                              const thrust::tuple<double, float, float, size_t, double> t = max_value[i];
                               const double gain_value = thrust::get<0>(t);
-                              const size_t index_value = thrust::get<1>(t);
+                              const float fvalue_prev_val = thrust::get<1>(t);
+                              const float fvalue_val = thrust::get<2>(t);
+                              const size_t count_val = thrust::get<3>(t);
+                              const double sum_val = thrust::get<4>(t);
 
                               if(node_index >= 0){
                                   if(gain_value > _bestSplit[node_index].gain){
                                       _bestSplit[node_index].fid = fid;
                                       _bestSplit[node_index].gain = gain_value;
-                                      _bestSplit[node_index].split_value = (fvalue[index_value + 1] + fvalue[index_value]) * 0.5;
-                                      _bestSplit[node_index].count = count[index_value];
-                                      _bestSplit[node_index].sum_grad = sum[index_value];
+                                      _bestSplit[node_index].split_value = (fvalue_prev_val + fvalue_val) * 0.5;
+                                      _bestSplit[node_index].count = count_val;
+                                      _bestSplit[node_index].sum_grad = sum_val;
                                     }
                                 }
                             }
