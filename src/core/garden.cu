@@ -134,7 +134,7 @@ namespace arboretum {
                       for(size_t fid = 0; fid < data->columns; ++fid){
 
                           thrust::copy(data->sorted_data[fid].begin(), data->sorted_data[fid].end(), fvalue.begin() + 1);
-                          device_vector<size_t> position(data->index[fid].begin(), data->index[fid].end());
+                          device_vector<int> position(data->index[fid].begin(), data->index[fid].end());
 
                           thrust::gather(position.begin(),
                                          position.end(),
@@ -159,30 +159,15 @@ namespace arboretum {
 
                           thrust::equal_to<unsigned int> binary_pred;
 
-                          cudaStream_t s1, s2;
-                          cudaStreamCreate(&s1);
-                          cudaStreamCreate(&s2);
-
-                          thrust::exclusive_scan_by_key(thrust::cuda::par.on(s1),
-                                                        segments.begin(),
+                          thrust::exclusive_scan_by_key(segments.begin(),
                                                         segments.end(),
                                                         grad_sorted.begin(),
                                                         sum.begin());
 
-                          thrust::exclusive_scan_by_key(thrust::cuda::par.on(s2),
-                                                        segments.begin(),
+                          thrust::exclusive_scan_by_key(segments.begin(),
                                                         segments.end(),
                                                         count.begin(),
                                                         count.begin());
-
-                          // synchronize with both streams
-                          cudaStreamSynchronize(s1);
-                          cudaStreamSynchronize(s2);
-                          // destroy streams
-                          cudaStreamDestroy(s1);
-                          cudaStreamDestroy(s2);
-
-
 
                           size_t lenght = 1 << level;
 
@@ -197,27 +182,15 @@ namespace arboretum {
                           device_vector<double> parent_node_sum_vector(data->rows, 0.0);
                           device_vector<size_t> parent_node_count_vector(data->rows, 0);
 
-                          cudaStreamCreate(&s1);
-                          cudaStreamCreate(&s2);
-
-                          thrust::gather(thrust::cuda::par.on(s1),
-                                         segments.begin(),
+                          thrust::gather(segments.begin(),
                                          segments.end(),
                                          parent_node_sum.begin(),
                                          parent_node_sum_vector.begin());
 
-                          thrust::gather(thrust::cuda::par.on(s2),
-                                         segments.begin(),
+                          thrust::gather(segments.begin(),
                                          segments.end(),
                                          parent_node_count.begin(),
                                          parent_node_count_vector.begin());
-
-                          // synchronize with both streams
-                          cudaStreamSynchronize(s1);
-                          cudaStreamSynchronize(s2);
-                          // destroy streams
-                          cudaStreamDestroy(s1);
-                          cudaStreamDestroy(s2);
 
                           thrust::for_each(
                                 thrust::make_zip_iterator(
