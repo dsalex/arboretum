@@ -53,6 +53,7 @@ namespace arboretum {
       for(size_t i = 0; i < rows; ++i){
           grad[i] = _gradFunc(y[i], y_hat[i]);
         }
+      grad_device = grad;
       for(size_t i = 0; i < columns; ++i){
           std::vector<float> tmp(data[i].size());
           for(size_t j = 0; j < data[i].size(); ++j){

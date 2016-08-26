@@ -126,25 +126,31 @@ namespace arboretum {
       void FindBestSplits(const int level, const io::DataMatrix *data, const thrust::host_vector<float> &grad){
 
                       device_vector<unsigned int> row2Node = _rowIndex2Node;
-                      for(size_t fid = 0; fid < data->columns; ++fid){
-                          device_vector<unsigned int> segments(data->rows);
-                          device_vector<float> grad(data->sorted_grad[fid].begin(), data->sorted_grad[fid].end());
+                      device_vector<unsigned int> segments(data->rows);
+                      device_vector<float> grad_sorted(data->rows);
+                      device_vector<float> fvalue(data->rows + 1);
+                      fvalue[0] = -std::numeric_limits<float>::infinity();
 
-                          device_vector<float> fvalue(data->rows + 1);
-                          fvalue[0] = -std::numeric_limits<float>::infinity();
+                      for(size_t fid = 0; fid < data->columns; ++fid){
+                          //(data->sorted_grad[fid].begin(), data->sorted_grad[fid].end());
+
                           thrust::copy(data->sorted_data[fid].begin(), data->sorted_data[fid].end(), fvalue.begin() + 1);
                           device_vector<size_t> position(data->index[fid].begin(), data->index[fid].end());
 
-                          thrust::gather(
-                                         position.begin(),
+                          thrust::gather(position.begin(),
                                          position.end(),
                                          row2Node.begin(),
                                          segments.begin());
 
+                          thrust::gather(position.begin(),
+                                         position.end(),
+                                         data->grad_device.begin(),
+                                         grad_sorted.begin());
+
                           thrust::stable_sort_by_key(segments.begin(),
                                                      segments.end(),
                                                      thrust::make_zip_iterator(
-                                                       thrust::make_tuple(grad.begin(),
+                                                       thrust::make_tuple(grad_sorted.begin(),
                                                        fvalue.begin() + 1)
                                                        ));
 
