@@ -132,7 +132,6 @@ namespace arboretum {
                       fvalue[0] = -std::numeric_limits<float>::infinity();
 
                       for(size_t fid = 0; fid < data->columns; ++fid){
-                          //(data->sorted_grad[fid].begin(), data->sorted_grad[fid].end());
 
                           thrust::copy(data->sorted_data[fid].begin(), data->sorted_data[fid].end(), fvalue.begin() + 1);
                           device_vector<size_t> position(data->index[fid].begin(), data->index[fid].end());
@@ -141,8 +140,6 @@ namespace arboretum {
                                          position.end(),
                                          row2Node.begin(),
                                          segments.begin());
-
-                          printf("gather \n");
 
                           thrust::gather(position.begin(),
                                          position.end(),
@@ -169,7 +166,7 @@ namespace arboretum {
                           thrust::exclusive_scan_by_key(thrust::cuda::par.on(s1),
                                                         segments.begin(),
                                                         segments.end(),
-                                                        grad.begin(),
+                                                        grad_sorted.begin(),
                                                         sum.begin());
 
                           thrust::exclusive_scan_by_key(thrust::cuda::par.on(s2),
