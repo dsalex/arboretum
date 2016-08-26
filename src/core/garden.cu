@@ -31,10 +31,8 @@ namespace arboretum {
 
       __host__ __device__
       T operator()(const T &l, const T &r) const {
-        if(thrust::get<0>(l) > thrust::get<0>(r))
-          return l;
-        else
-          return r;
+        const T _lookup [2] { r, l };
+        return _lookup[thrust::get<0>(l) > thrust::get<0>(r)];
       }
     };
 
