@@ -30,7 +30,7 @@ namespace arboretum {
       max_gain_functor(){}
 
       __host__ __device__
-      T operator()(const T &l, const T &r) const {
+      T inline operator()(const T l, const T r) const {
         const T _lookup [2] { r, l };
         return _lookup[thrust::get<0>(l) > thrust::get<0>(r)];
       }
@@ -43,7 +43,7 @@ namespace arboretum {
 
       template <typename Tuple>
       __host__ __device__
-      void operator()(Tuple t)
+      void inline operator()(Tuple t)
       {
         const double left_sum = thrust::get<0>(t);
         const size_t left_count = thrust::get<1>(t);
