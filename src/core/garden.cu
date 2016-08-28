@@ -197,7 +197,7 @@ namespace arboretum {
                                                         grad_sorted.begin(),
                                                         sum.begin());
 
-                          thrust::constant_iterator<int> one_iter(1),
+                          thrust::constant_iterator<size_t> one_iter(1);
 
                           thrust::exclusive_scan_by_key(thrust::cuda::par.on(s2),
                                                         segments.begin(),
