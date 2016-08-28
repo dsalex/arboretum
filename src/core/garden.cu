@@ -126,6 +126,12 @@ namespace arboretum {
       std::vector<Split> _bestSplit;
 
       void FindBestSplits(const int level, const io::DataMatrix *data, const thrust::host_vector<float> &grad){
+
+        typedef thrust::device_vector<double>::iterator ElementDoubleIterator;
+        typedef thrust::device_vector<size_t>::iterator ElementSize_TIterator;
+        typedef thrust::device_vector<int>::iterator ElementIntIterator;
+        typedef thrust::device_vector<unsigned int>::iterator IndexIterator;
+
        size_t lenght = 1 << level;
 
         device_vector<double> parent_node_sum(lenght);
@@ -147,7 +153,7 @@ namespace arboretum {
         cudaStreamCreate(&s2);
 
                       device_vector<unsigned int> row2Node = _rowIndex2Node;
-                      device_vector<unsigned int> segments(data->rows);
+//                      device_vector<unsigned int> segments(data->rows);
                       device_vector<float> fvalue(data->rows + 1);
                       fvalue[0] = -std::numeric_limits<float>::infinity();
                       device_vector<int> position(data->rows);
@@ -168,19 +174,21 @@ namespace arboretum {
                           cudaStreamSynchronize(s2);
                           // destroy streams
 
-                          thrust::gather(thrust::cuda::par.on(s1),
-                                         position.begin(),
-                                         position.end(),
-                                         row2Node.begin(),
-                                         segments.begin());
+                          thrust::permutation_iterator<IndexIterator, ElementIntIterator> segments_iter(row2Node.begin(), position.begin());
+
+//                          thrust::gather(thrust::cuda::par.on(s1),
+//                                         position.begin(),
+//                                         position.end(),
+//                                         row2Node.begin(),
+//                                         segments.begin());
 
                           // synchronize with both streams
-                          cudaStreamSynchronize(s1);
+//                          cudaStreamSynchronize(s1);
 //                          cudaStreamSynchronize(s2);
                           // destroy streams
 
-                          thrust::stable_sort_by_key(segments.begin(),
-                                                     segments.end(),
+                          thrust::stable_sort_by_key(segments_iter,
+                                                     segments_iter + data->rows,
                                                      thrust::make_zip_iterator(
                                                        thrust::make_tuple(grad_sorted.begin(),
                                                        fvalue.begin() + 1)
@@ -192,16 +200,16 @@ namespace arboretum {
                           thrust::equal_to<unsigned int> binary_pred;
 
                           thrust::exclusive_scan_by_key(thrust::cuda::par.on(s1),
-                                                        segments.begin(),
-                                                        segments.end(),
+                                                        segments_iter,
+                                                        segments_iter + data->rows,
                                                         grad_sorted.begin(),
                                                         sum.begin());
 
                           thrust::constant_iterator<size_t> one_iter(1);
 
                           thrust::exclusive_scan_by_key(thrust::cuda::par.on(s2),
-                                                        segments.begin(),
-                                                        segments.end(),
+                                                        segments_iter,
+                                                        segments_iter + data->rows,
                                                         one_iter,
                                                         count.begin());
 
@@ -209,11 +217,11 @@ namespace arboretum {
                           cudaStreamSynchronize(s1);
                           cudaStreamSynchronize(s2);
 
-                          typedef thrust::device_vector<double>::iterator ElementDoubleIterator;
-                          typedef thrust::device_vector<size_t>::iterator ElementIntIterator;
-                          typedef thrust::device_vector<unsigned int>::iterator IndexIterator;
-                          thrust::permutation_iterator<ElementDoubleIterator, IndexIterator> parent_node_sum_iter(parent_node_sum.begin(), segments.begin());
-                          thrust::permutation_iterator<ElementIntIterator, IndexIterator> parent_node_count_iter(parent_node_count.begin(), segments.begin());
+
+                          thrust::permutation_iterator<ElementDoubleIterator, thrust::permutation_iterator<IndexIterator, ElementIntIterator> >
+                              parent_node_sum_iter(parent_node_sum.begin(), segments_iter);
+                          thrust::permutation_iterator<ElementSize_TIterator, thrust::permutation_iterator<IndexIterator, ElementIntIterator>>
+                              parent_node_count_iter(parent_node_count.begin(), segments_iter);
 
                           device_vector<double> gain(data->rows);
 
@@ -243,8 +251,8 @@ namespace arboretum {
 
                           max_gain_functor< thrust::tuple<double, size_t> > binary_op;
 
-                          thrust::reduce_by_key(segments.begin(),
-                                                segments.end(),
+                          thrust::reduce_by_key(segments_iter,
+                                                segments_iter + data->rows,
                                                 tuple_iterator,
                                                 max_key_d.begin(),
                                                 max_value_d.begin(),
