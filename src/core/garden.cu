@@ -41,7 +41,7 @@ namespace arboretum {
       const int min_wieght;
 
       __host__ __device__
-      gain_functor(int min_wieght) : min_wieght(min_wieght) {}
+      gain_functor(const int min_wieght) : min_wieght(min_wieght) {}
 
       template <typename Tuple>
       __host__ __device__
@@ -146,6 +146,14 @@ namespace arboretum {
         cudaStreamCreate(&s1);
         cudaStreamCreate(&s2);
 
+        device_vector<int> max_key_d(1 << level, -1);
+
+        device_vector<thrust::tuple<double, size_t>> max_value_d(1 << level);
+
+        host_vector<int> max_key(1 << level, -1);
+        host_vector<thrust::tuple<double, size_t>> max_value(1 << level);
+
+
                       device_vector<unsigned int> row2Node = _rowIndex2Node;
                       device_vector<unsigned int> segments(data->rows);
                       device_vector<float> fvalue(data->rows + 1);
@@ -166,18 +174,12 @@ namespace arboretum {
                           // synchronize with both streams
                           cudaStreamSynchronize(s1);
                           cudaStreamSynchronize(s2);
-                          // destroy streams
 
-                          thrust::gather(thrust::cuda::par.on(s1),
-                                         position.begin(),
+                          thrust::gather(position.begin(),
                                          position.end(),
                                          row2Node.begin(),
                                          segments.begin());
 
-                          // synchronize with both streams
-                          cudaStreamSynchronize(s1);
-//                          cudaStreamSynchronize(s2);
-                          // destroy streams
 
                           thrust::stable_sort_by_key(segments.begin(),
                                                      segments.end(),
@@ -228,12 +230,7 @@ namespace arboretum {
                                                      fvalue.end(), fvalue.end() - 1)),
                               gain_functor(param.min_child_weight));
 
-                          device_vector<int> max_key_d(1 << level, -1);
 
-                          device_vector<thrust::tuple<double, size_t>> max_value_d(1 << level);
-
-                          host_vector<int> max_key(1 << level, -1);
-                          host_vector<thrust::tuple<double, size_t>> max_value(1 << level);
 
                           thrust::counting_iterator<size_t> iter(0);
 
@@ -258,20 +255,19 @@ namespace arboretum {
                               const int node_index = max_key[i];
                               const thrust::tuple<double, size_t> t = max_value[i];
                               const double gain_value = thrust::get<0>(t);
-                              const size_t index_value = thrust::get<1>(t);
-
-                              const float fvalue_prev_val = fvalue[index_value];
-                              const float fvalue_val = fvalue[index_value + 1];
-                              const size_t count_val = count[index_value];
-                              const double sum_val = sum[index_value];
 
                               if(node_index >= 0 && gain_value > _bestSplit[node_index].gain){
-                                      _bestSplit[node_index].fid = fid;
-                                      _bestSplit[node_index].gain = gain_value;
-                                      _bestSplit[node_index].split_value = (fvalue_prev_val + fvalue_val) * 0.5;
-                                      _bestSplit[node_index].count = count_val;
-                                      _bestSplit[node_index].sum_grad = sum_val;
-                                    }
+                                  const size_t index_value = thrust::get<1>(t);
+                                  const float fvalue_prev_val = fvalue[index_value];
+                                  const float fvalue_val = fvalue[index_value + 1];
+                                  const size_t count_val = count[index_value];
+                                  const double sum_val = sum[index_value];
+                                  _bestSplit[node_index].fid = fid;
+                                  _bestSplit[node_index].gain = gain_value;
+                                  _bestSplit[node_index].split_value = (fvalue_prev_val + fvalue_val) * 0.5;
+                                  _bestSplit[node_index].count = count_val;
+                                  _bestSplit[node_index].sum_grad = sum_val;
+                                }
                             }
 
                           for(size_t i = 0; i < lenght; ++i){
