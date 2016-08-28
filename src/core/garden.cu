@@ -207,35 +207,42 @@ namespace arboretum {
                           cudaStreamSynchronize(s1);
                           cudaStreamSynchronize(s2);
 
-                          device_vector<double> parent_node_sum_vector(data->rows, 0.0);
-                          device_vector<size_t> parent_node_count_vector(data->rows, 0);
+                          typedef thrust::device_vector<double>::iterator ElementDoubleIterator;
+                          typedef thrust::device_vector<size_t>::iterator ElementIntIterator;
+                          typedef thrust::device_vector<unsigned int>::iterator IndexIterator;
+                          thrust::permutation_iterator<ElementDoubleIterator, IndexIterator> parent_node_sum_iter(parent_node_sum.begin(), segments.begin());
+                          thrust::permutation_iterator<ElementIntIterator, IndexIterator> parent_node_count_iter(parent_node_count.begin(), segments.begin());
 
-                          thrust::gather(thrust::cuda::par.on(s1),
-                                         segments.begin(),
-                                         segments.end(),
-                                         parent_node_sum.begin(),
-                                         parent_node_sum_vector.begin());
 
-                          thrust::gather(thrust::cuda::par.on(s2),
-                                         segments.begin(),
-                                         segments.end(),
-                                         parent_node_count.begin(),
-                                         parent_node_count_vector.begin());
+//                          device_vector<double> parent_node_sum_vector(data->rows, 0.0);
+//                          device_vector<size_t> parent_node_count_vector(data->rows, 0);
+
+//                          thrust::gather(thrust::cuda::par.on(s1),
+//                                         segments.begin(),
+//                                         segments.end(),
+//                                         parent_node_sum.begin(),
+//                                         parent_node_sum_vector.begin());
+
+//                          thrust::gather(thrust::cuda::par.on(s2),
+//                                         segments.begin(),
+//                                         segments.end(),
+//                                         parent_node_count.begin(),
+//                                         parent_node_count_vector.begin());
 
                           // synchronize with both streams
-                          cudaStreamSynchronize(s1);
-                          cudaStreamSynchronize(s2);
+//                          cudaStreamSynchronize(s1);
+//                          cudaStreamSynchronize(s2);
 
                           device_vector<double> gain(data->rows);
 
                           thrust::for_each(
                                 thrust::make_zip_iterator(
-                                  thrust::make_tuple(sum.begin(), count.begin(), parent_node_sum_vector.begin(),
-                                                     parent_node_count_vector.begin(), gain.begin(),
+                                  thrust::make_tuple(sum.begin(), count.begin(), parent_node_sum_iter,
+                                                     parent_node_count_iter, gain.begin(),
                                                      fvalue.begin() + 1, fvalue.begin())),
                                 thrust::make_zip_iterator(
-                                  thrust::make_tuple(sum.end(), count.end(), parent_node_sum_vector.end(),
-                                                     parent_node_count_vector.end(), gain.end(),
+                                  thrust::make_tuple(sum.end(), count.end(), parent_node_sum_iter + data->rows,
+                                                     parent_node_count_iter + data->rows, gain.end(),
                                                      fvalue.end(), fvalue.end() - 1)),
                               gain_functor(param.min_child_weight));
 
