@@ -197,10 +197,12 @@ namespace arboretum {
                                                         grad_sorted.begin(),
                                                         sum.begin());
 
+                          thrust::constant_iterator<int> one_iter(1),
+
                           thrust::exclusive_scan_by_key(thrust::cuda::par.on(s2),
                                                         segments.begin(),
                                                         segments.end(),
-                                                        count.begin(),
+                                                        one_iter,
                                                         count.begin());
 
                           // synchronize with both streams
@@ -212,26 +214,6 @@ namespace arboretum {
                           typedef thrust::device_vector<unsigned int>::iterator IndexIterator;
                           thrust::permutation_iterator<ElementDoubleIterator, IndexIterator> parent_node_sum_iter(parent_node_sum.begin(), segments.begin());
                           thrust::permutation_iterator<ElementIntIterator, IndexIterator> parent_node_count_iter(parent_node_count.begin(), segments.begin());
-
-
-//                          device_vector<double> parent_node_sum_vector(data->rows, 0.0);
-//                          device_vector<size_t> parent_node_count_vector(data->rows, 0);
-
-//                          thrust::gather(thrust::cuda::par.on(s1),
-//                                         segments.begin(),
-//                                         segments.end(),
-//                                         parent_node_sum.begin(),
-//                                         parent_node_sum_vector.begin());
-
-//                          thrust::gather(thrust::cuda::par.on(s2),
-//                                         segments.begin(),
-//                                         segments.end(),
-//                                         parent_node_count.begin(),
-//                                         parent_node_count_vector.begin());
-
-                          // synchronize with both streams
-//                          cudaStreamSynchronize(s1);
-//                          cudaStreamSynchronize(s2);
 
                           device_vector<double> gain(data->rows);
 
