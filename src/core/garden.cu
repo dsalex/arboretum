@@ -128,6 +128,10 @@ namespace arboretum {
       void FindBestSplits(const int level, const io::DataMatrix *data, const thrust::host_vector<float> &grad){
        size_t lenght = 1 << level;
 
+       device_vector<double> gain(data->rows);
+       device_vector<double> sum(data->rows);
+       device_vector<size_t> count(data->rows);
+
         device_vector<double> parent_node_sum(lenght);
         device_vector<size_t> parent_node_count(lenght);
         {
@@ -188,8 +192,7 @@ namespace arboretum {
                                                        fvalue.begin() + 1)
                                                        ));
 
-                          device_vector<double> sum(data->rows);
-                          device_vector<size_t> count(data->rows, 1);
+
 
                           thrust::equal_to<unsigned int> binary_pred;
 
@@ -217,7 +220,7 @@ namespace arboretum {
                           thrust::permutation_iterator<ElementDoubleIterator, IndexIterator> parent_node_sum_iter(parent_node_sum.begin(), segments.begin());
                           thrust::permutation_iterator<ElementIntIterator, IndexIterator> parent_node_count_iter(parent_node_count.begin(), segments.begin());
 
-                          device_vector<double> gain(data->rows);
+
 
                           thrust::for_each(
                                 thrust::make_zip_iterator(
