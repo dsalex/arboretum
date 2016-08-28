@@ -126,6 +126,22 @@ namespace arboretum {
       std::vector<Split> _bestSplit;
 
       void FindBestSplits(const int level, const io::DataMatrix *data, const thrust::host_vector<float> &grad){
+       size_t lenght = 1 << level;
+
+        device_vector<double> parent_node_sum(lenght);
+        device_vector<size_t> parent_node_count(lenght);
+        {
+          host_vector<double> parent_node_sum_h(lenght);
+          host_vector<size_t> parent_node_count_h(lenght);
+
+          for(size_t i = 0; i < lenght; ++i){
+              parent_node_count_h[i] = _nodeStat[i].count;
+              parent_node_sum_h[i] = _nodeStat[i].sum_grad;
+            }
+          parent_node_sum = parent_node_sum_h;
+          parent_node_count = parent_node_count_h;
+        }
+
         cudaStream_t s1, s2;
         cudaStreamCreate(&s1);
         cudaStreamCreate(&s2);
@@ -171,7 +187,6 @@ namespace arboretum {
                                                        ));
 
                           device_vector<double> sum(data->rows);
-                          device_vector<double> gain(data->rows);
                           device_vector<size_t> count(data->rows, 1);
 
                           thrust::equal_to<unsigned int> binary_pred;
@@ -192,22 +207,6 @@ namespace arboretum {
                           cudaStreamSynchronize(s1);
                           cudaStreamSynchronize(s2);
 
-                          size_t lenght = 1 << level;
-
-                          device_vector<double> parent_node_sum(lenght);
-                          device_vector<size_t> parent_node_count(lenght);
-                          {
-                            device_vector<double> parent_node_sum_h(lenght);
-                            device_vector<size_t> parent_node_count_h(lenght);
-
-                            for(size_t i = 0; i < lenght; ++i){
-                                parent_node_count_h[i] = _nodeStat[i].count;
-                                parent_node_sum_h[i] = _nodeStat[i].sum_grad;
-                              }
-                            parent_node_sum = parent_node_sum_h;
-                            parent_node_count = parent_node_count_h;
-                          }
-
                           device_vector<double> parent_node_sum_vector(data->rows, 0.0);
                           device_vector<size_t> parent_node_count_vector(data->rows, 0);
 
@@ -226,6 +225,8 @@ namespace arboretum {
                           // synchronize with both streams
                           cudaStreamSynchronize(s1);
                           cudaStreamSynchronize(s2);
+
+                          device_vector<double> gain(data->rows);
 
                           thrust::for_each(
                                 thrust::make_zip_iterator(
