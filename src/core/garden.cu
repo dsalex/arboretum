@@ -135,8 +135,6 @@ namespace arboretum {
                       device_vector<float> fvalue(data->rows + 1);
                       fvalue[0] = -std::numeric_limits<float>::infinity();
                       device_vector<int> position(data->rows);
-//                      device_vector<size_t> index(data->rows);
-
 
                       for(size_t fid = 0; fid < data->columns; ++fid){
                           device_vector<float> grad_sorted = data->sorted_grad[fid];
@@ -159,16 +157,6 @@ namespace arboretum {
                                          position.end(),
                                          row2Node.begin(),
                                          segments.begin());
-
-//                          thrust::sequence(thrust::cuda::par.on(s2),
-//                                           index.begin(),
-//                                           index.end());
-
-//                          thrust::gather(thrust::cuda::par.on(s2),
-//                                         position.begin(),
-//                                         position.end(),
-//                                         data->grad_device.begin(),
-//                                         grad_sorted.begin());
 
                           // synchronize with both streams
                           cudaStreamSynchronize(s1);
