@@ -30,7 +30,7 @@ namespace arboretum {
       max_gain_functor(){}
 
       __host__ __device__
-      T inline operator()(const T l, const T r) const {
+      T inline operator()(const T &l, const T &r) const {
         const T _lookup [2] { r, l };
         return _lookup[thrust::get<0>(l) > thrust::get<0>(r)];
       }
@@ -130,15 +130,12 @@ namespace arboretum {
 
                       device_vector<unsigned int> row2Node = _rowIndex2Node;
                       device_vector<unsigned int> segments(data->rows);
-                      device_vector<float> grad_sorted(data->rows);
                       device_vector<float> fvalue(data->rows + 1);
                       fvalue[0] = -std::numeric_limits<float>::infinity();
                       device_vector<int> position(data->rows);
 
                       for(size_t fid = 0; fid < data->columns; ++fid){
-
-
-
+                          device_vector<float> grad_sorted = data->sorted_grad[fid];
                           thrust::copy(thrust::cuda::par.on(s1),
                                        data->sorted_data[fid].begin(),
                                        data->sorted_data[fid].end(),
@@ -161,15 +158,15 @@ namespace arboretum {
                                          row2Node.begin(),
                                          segments.begin());
 
-                          thrust::gather(thrust::cuda::par.on(s2),
-                                         position.begin(),
-                                         position.end(),
-                                         data->grad_device.begin(),
-                                         grad_sorted.begin());
+//                          thrust::gather(thrust::cuda::par.on(s2),
+//                                         position.begin(),
+//                                         position.end(),
+//                                         data->grad_device.begin(),
+//                                         grad_sorted.begin());
 
                           // synchronize with both streams
                           cudaStreamSynchronize(s1);
-                          cudaStreamSynchronize(s2);
+//                          cudaStreamSynchronize(s2);
                           // destroy streams
 
                           thrust::stable_sort_by_key(segments.begin(),

@@ -19,7 +19,6 @@ namespace arboretum {
       std::vector<float> y_hat;
       std::vector<float> y;
       thrust::host_vector<float> grad;
-      thrust::device_vector<float> grad_device;
       size_t rows;
       size_t columns;
       void Init(const float initial_y, std::function<float const(const float, const float)> func);
