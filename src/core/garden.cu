@@ -126,11 +126,11 @@ namespace arboretum {
       std::vector<Split> _bestSplit;
 
       void FindBestSplits(const int level, const io::DataMatrix *data, const thrust::host_vector<float> &grad){
+        typedef thrust::device_vector<double>::iterator ElementDoubleIterator;
+        typedef thrust::device_vector<size_t>::iterator ElementIntIterator;
+        typedef thrust::device_vector<unsigned int>::iterator IndexIterator;
+        size_t overlap_depth = 2;
        size_t lenght = 1 << level;
-
-       device_vector<double> gain(data->rows);
-       device_vector<double> sum(data->rows);
-       device_vector<size_t> count(data->rows);
 
         device_vector<double> parent_node_sum(lenght);
         device_vector<size_t> parent_node_count(lenght);
@@ -146,125 +146,164 @@ namespace arboretum {
           parent_node_count = parent_node_count_h;
         }
 
-        cudaStream_t s1, s2;
-        cudaStreamCreate(&s1);
-        cudaStreamCreate(&s2);
+        cudaStream_t streams[overlap_depth];
+        std::vector< device_vector<double> > gain(overlap_depth);
+        std::vector< device_vector<double> > sum(overlap_depth);
+        std::vector< device_vector<size_t> > count(overlap_depth);
+        std::vector< device_vector<unsigned int> > segments(overlap_depth);
+        std::vector< device_vector<int> > max_key_d(overlap_depth);
+        std::vector< device_vector<thrust::tuple<double, size_t>> > max_value_d(overlap_depth);
+        std::vector< host_vector<int> > max_key(overlap_depth);
+        std::vector< host_vector<thrust::tuple<double, size_t>> > max_value(overlap_depth);
+        std::vector< device_vector<float> > fvalue(overlap_depth);
+        std::vector< device_vector<int> > position(overlap_depth);
+        std::vector< device_vector<float> > grad_sorted(overlap_depth);
 
-        device_vector<int> max_key_d(1 << level, -1);
+        for(size_t i = 0; i < overlap_depth; ++i){
+            cudaStreamCreate(&streams[i]);
+            gain[i]  = device_vector<double>(data->rows);
+            sum[i]   = device_vector<double>(data->rows);
+            count[i] = device_vector<size_t>(data->rows);
+            segments[i] = device_vector<unsigned int>(data->rows);
+            fvalue[i] = device_vector<float>(data->rows + 1);
+            fvalue[i][0] = -std::numeric_limits<float>::infinity();
+            position[i] = device_vector<int>(data->rows);
+            grad_sorted[i] = device_vector<float>(data->rows);
 
-        device_vector<thrust::tuple<double, size_t>> max_value_d(1 << level);
+            max_key_d[i] = device_vector<int>(1 << level, -1);
+            max_value_d[i] = device_vector<thrust::tuple<double, size_t>>(1 << level);
+            max_key_d[i] = host_vector<int>(1 << level, -1);
+            max_value_d[i] = host_vector<thrust::tuple<double, size_t>>(1 << level);
+          }
 
-        host_vector<int> max_key(1 << level, -1);
-        host_vector<thrust::tuple<double, size_t>> max_value(1 << level);
-
-
-                      device_vector<unsigned int> row2Node = _rowIndex2Node;
-                      device_vector<unsigned int> segments(data->rows);
-                      device_vector<float> fvalue(data->rows + 1);
-                      fvalue[0] = -std::numeric_limits<float>::infinity();
-                      device_vector<int> position(data->rows);
+        thrust::equal_to<unsigned int> binary_pred;
+        max_gain_functor< thrust::tuple<double, size_t> > binary_op;
+        device_vector<unsigned int> row2Node = _rowIndex2Node;
 
                       for(size_t fid = 0; fid < data->columns; ++fid){
-                          device_vector<float> grad_sorted = data->sorted_grad[fid];
-                          thrust::copy(thrust::cuda::par.on(s1),
-                                       data->sorted_data[fid].begin(),
-                                       data->sorted_data[fid].end(),
-                                       fvalue.begin() + 1);
-                          thrust::copy(thrust::cuda::par.on(s2),
-                                       data->index[fid].begin(),
-                                       data->index[fid].end(),
-                                       position.begin());
+                          for(size_t i = 0; i < overlap_depth && (fid + i) < data->columns; ++i){
+                              if(fid != 0 && i < overlap_depth - 1){
+                                  continue;
+                                }
+                              size_t active_fid = fid + i;
+                              size_t circular_fid = active_fid % overlap_depth;
+                              cudaStream_t s = streams[circular_fid];
 
-                          // synchronize with both streams
-                          cudaStreamSynchronize(s1);
-                          cudaStreamSynchronize(s2);
+                              thrust::copy(thrust::cuda::par.on(s),
+                                           data->sorted_grad[active_fid].begin(),
+                                           data->sorted_grad[active_fid].end(),
+                                           grad_sorted[circular_fid].begin());
 
-                          thrust::gather(position.begin(),
-                                         position.end(),
-                                         row2Node.begin(),
-                                         segments.begin());
+                              thrust::copy(thrust::cuda::par.on(s),
+                                           data->sorted_data[active_fid].begin(),
+                                           data->sorted_data[active_fid].end(),
+                                           fvalue[circular_fid].begin() + 1);
 
+                              thrust::copy(thrust::cuda::par.on(s),
+                                           data->index[active_fid].begin(),
+                                           data->index[active_fid].end(),
+                                           position[circular_fid].begin());
 
-                          thrust::stable_sort_by_key(segments.begin(),
-                                                     segments.end(),
-                                                     thrust::make_zip_iterator(
-                                                       thrust::make_tuple(grad_sorted.begin(),
-                                                       fvalue.begin() + 1)
-                                                       ));
+                              thrust::gather(thrust::cuda::par.on(s),
+                                             position[circular_fid].begin(),
+                                             position[circular_fid].end(),
+                                             row2Node.begin(),
+                                             segments[circular_fid].begin());
 
-
-
-                          thrust::equal_to<unsigned int> binary_pred;
-
-                          thrust::exclusive_scan_by_key(thrust::cuda::par.on(s1),
-                                                        segments.begin(),
-                                                        segments.end(),
-                                                        grad_sorted.begin(),
-                                                        sum.begin());
-
-                          thrust::constant_iterator<size_t> one_iter(1);
-
-                          thrust::exclusive_scan_by_key(thrust::cuda::par.on(s2),
-                                                        segments.begin(),
-                                                        segments.end(),
-                                                        one_iter,
-                                                        count.begin());
-
-                          // synchronize with both streams
-                          cudaStreamSynchronize(s1);
-                          cudaStreamSynchronize(s2);
-
-                          typedef thrust::device_vector<double>::iterator ElementDoubleIterator;
-                          typedef thrust::device_vector<size_t>::iterator ElementIntIterator;
-                          typedef thrust::device_vector<unsigned int>::iterator IndexIterator;
-                          thrust::permutation_iterator<ElementDoubleIterator, IndexIterator> parent_node_sum_iter(parent_node_sum.begin(), segments.begin());
-                          thrust::permutation_iterator<ElementIntIterator, IndexIterator> parent_node_count_iter(parent_node_count.begin(), segments.begin());
+                              thrust::stable_sort_by_key(thrust::cuda::par.on(s),
+                                                         segments[circular_fid].begin(),
+                                                         segments[circular_fid].end(),
+                                                         thrust::make_zip_iterator(
+                                                           thrust::make_tuple(grad_sorted[circular_fid].begin(),
+                                                           fvalue[circular_fid].begin() + 1)
+                                                           ));
 
 
+                              thrust::exclusive_scan_by_key(thrust::cuda::par.on(s),
+                                                            segments[circular_fid].begin(),
+                                                            segments[circular_fid].end(),
+                                                            grad_sorted[circular_fid].begin(),
+                                                            sum[circular_fid].begin());
 
-                          thrust::for_each(
-                                thrust::make_zip_iterator(
-                                  thrust::make_tuple(sum.begin(), count.begin(), parent_node_sum_iter,
-                                                     parent_node_count_iter, gain.begin(),
-                                                     fvalue.begin() + 1, fvalue.begin())),
-                                thrust::make_zip_iterator(
-                                  thrust::make_tuple(sum.end(), count.end(), parent_node_sum_iter + data->rows,
-                                                     parent_node_count_iter + data->rows, gain.end(),
-                                                     fvalue.end(), fvalue.end() - 1)),
-                              gain_functor(param.min_child_weight));
+                              thrust::constant_iterator<size_t> one_iter(1);
+
+                              thrust::exclusive_scan_by_key(thrust::cuda::par.on(s),
+                                                            segments[circular_fid].begin(),
+                                                            segments[circular_fid].end(),
+                                                            one_iter,
+                                                            count[circular_fid].begin());
+
+                              thrust::permutation_iterator<ElementDoubleIterator, IndexIterator>
+                                  parent_node_sum_iter(parent_node_sum.begin(), segments[circular_fid].begin());
+                              thrust::permutation_iterator<ElementIntIterator, IndexIterator>
+                                  parent_node_count_iter(parent_node_count.begin(), segments[circular_fid].begin());
+
+
+                              thrust::for_each(thrust::cuda::par.on(s),
+                                    thrust::make_zip_iterator(
+                                      thrust::make_tuple(sum[circular_fid].begin(),
+                                                         count[circular_fid].begin(),
+                                                         parent_node_sum_iter,
+                                                         parent_node_count_iter,
+                                                         gain[circular_fid].begin(),
+                                                         fvalue[circular_fid].begin() + 1,
+                                                         fvalue[circular_fid].begin())),
+                                    thrust::make_zip_iterator(
+                                      thrust::make_tuple(sum[circular_fid].end(),
+                                                         count[circular_fid].end(),
+                                                         parent_node_sum_iter + data->rows,
+                                                         parent_node_count_iter + data->rows,
+                                                         gain[circular_fid].end(),
+                                                         fvalue[circular_fid].end(),
+                                                         fvalue[circular_fid].end() - 1)),
+                                  gain_functor(param.min_child_weight));
 
 
 
-                          thrust::counting_iterator<size_t> iter(0);
+                              thrust::counting_iterator<size_t> iter(0);
 
-                          auto tuple_iterator = thrust::make_zip_iterator(
-                                thrust::make_tuple(gain.begin(),
-                                                   iter));
+                              auto tuple_iterator = thrust::make_zip_iterator(
+                                    thrust::make_tuple(gain[circular_fid].begin(),
+                                                       iter));
 
-                          max_gain_functor< thrust::tuple<double, size_t> > binary_op;
+                              thrust::reduce_by_key(thrust::cuda::par.on(s),
+                                                    segments[circular_fid].begin(),
+                                                    segments[circular_fid].end(),
+                                                    tuple_iterator,
+                                                    max_key_d[circular_fid].begin(),
+                                                    max_value_d[circular_fid].begin(),
+                                                    binary_pred,
+                                                    binary_op);
 
-                          thrust::reduce_by_key(segments.begin(),
-                                                segments.end(),
-                                                tuple_iterator,
-                                                max_key_d.begin(),
-                                                max_value_d.begin(),
-                                                binary_pred,
-                                                binary_op);
+                              thrust::copy(thrust::cuda::par.on(s),
+                                           max_key_d[circular_fid].begin(),
+                                           max_key_d[circular_fid].end(),
+                                           max_key[circular_fid].begin());
 
-                          thrust::copy(max_key_d.begin(), max_key_d.end(), max_key.begin());
-                          thrust::copy(max_value_d.begin(), max_value_d.end(), max_value.begin());
+                              thrust::copy(thrust::cuda::par.on(s),
+                                           max_value_d[circular_fid].begin(),
+                                           max_value_d[circular_fid].end(),
+                                           max_value[circular_fid].begin());
 
-                          for(size_t i = 0; i < max_key.size(); ++i){
-                              const int node_index = max_key[i];
-                              const thrust::tuple<double, size_t> t = max_value[i];
+
+
+                            }
+
+                          size_t circular_fid = fid % overlap_depth;
+                          cudaStream_t s = streams[circular_fid];
+                          cudaStreamSynchronize(s);
+
+                          for(size_t i = 0; i < max_key[circular_fid].size(); ++i){
+                              const int node_index = max_key[circular_fid][i];
+                              const thrust::tuple<double, size_t> t = max_value[circular_fid][i];
                               const double gain_value = thrust::get<0>(t);
 
                               if(node_index >= 0 && gain_value > _bestSplit[node_index].gain){
                                   const size_t index_value = thrust::get<1>(t);
-                                  const float fvalue_prev_val = fvalue[index_value];
-                                  const float fvalue_val = fvalue[index_value + 1];
-                                  const size_t count_val = count[index_value];
-                                  const double sum_val = sum[index_value];
+                                  const float fvalue_prev_val = fvalue[circular_fid][index_value];
+                                  const float fvalue_val = fvalue[circular_fid][index_value + 1];
+                                  const size_t count_val = count[circular_fid][index_value];
+                                  const double sum_val = sum[circular_fid][index_value];
                                   _bestSplit[node_index].fid = fid;
                                   _bestSplit[node_index].gain = gain_value;
                                   _bestSplit[node_index].split_value = (fvalue_prev_val + fvalue_val) * 0.5;
@@ -287,8 +326,9 @@ namespace arboretum {
                             }
 
                         }
-                      cudaStreamDestroy(s1);
-                      cudaStreamDestroy(s2);
+                      for(size_t i = 0; i < overlap_depth; ++i){
+                          cudaStreamCreate(&streams[i]);
+                      }
 
       }
       void UpdateNodeStat(const int level, const thrust::host_vector<float> &grad, const RegTree *tree){
