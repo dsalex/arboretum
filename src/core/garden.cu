@@ -310,6 +310,8 @@ namespace arboretum {
 
                             }
 
+                          printf("collect result %d \n", fid);
+
                           size_t circular_fid = fid % overlap_depth;
                           cudaStream_t s = streams[circular_fid];
                           cudaStreamSynchronize(s);
