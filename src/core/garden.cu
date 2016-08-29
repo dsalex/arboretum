@@ -201,16 +201,19 @@ namespace arboretum {
                                            data->sorted_grad[active_fid].begin(),
                                            data->sorted_grad[active_fid].end(),
                                            grad_sorted[circular_fid].begin());
+                              printf("204 \n");
 
                               thrust::copy(thrust::cuda::par.on(s),
                                            data->sorted_data[active_fid].begin(),
                                            data->sorted_data[active_fid].end(),
                                            fvalue[circular_fid].begin() + 1);
+                              printf("210 \n");
 
                               thrust::copy(thrust::cuda::par.on(s),
                                            data->index[active_fid].begin(),
                                            data->index[active_fid].end(),
                                            position[circular_fid].begin());
+                              printf("216 \n");
 
                               thrust::gather(thrust::cuda::par.on(s),
                                              position[circular_fid].begin(),
