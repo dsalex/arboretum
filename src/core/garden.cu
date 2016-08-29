@@ -190,9 +190,9 @@ namespace arboretum {
                                   continue;
                                 }
                               size_t active_fid = fid + i;
-                              printf("active_fid %d \n", active_fid);
-
                               size_t circular_fid = active_fid % overlap_depth;
+
+                              printf("active_fid %d circular_fid %d \n", active_fid, circular_fid);
                               cudaStream_t s = streams[circular_fid];
 
                               printf("stream \n");
