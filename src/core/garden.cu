@@ -147,17 +147,17 @@ namespace arboretum {
         }
 
         cudaStream_t streams[overlap_depth];
-        std::vector< device_vector<double> > gain(overlap_depth);
-        std::vector< device_vector<double> > sum(overlap_depth);
-        std::vector< device_vector<size_t> > count(overlap_depth);
-        std::vector< device_vector<unsigned int> > segments(overlap_depth);
-        std::vector< device_vector<int> > max_key_d(overlap_depth);
-        std::vector< device_vector<thrust::tuple<double, size_t>> > max_value_d(overlap_depth);
-        std::vector< host_vector<int> > max_key(overlap_depth);
-        std::vector< host_vector<thrust::tuple<double, size_t>> > max_value(overlap_depth);
-        std::vector< device_vector<float> > fvalue(overlap_depth);
-        std::vector< device_vector<int> > position(overlap_depth);
-        std::vector< device_vector<float> > grad_sorted(overlap_depth);
+        device_vector<double> *gain = new device_vector<double>[overlap_depth];
+        device_vector<double> *sum = new device_vector<double>[overlap_depth];
+        device_vector<size_t> *count = new device_vector<size_t>[overlap_depth];
+        device_vector<unsigned int> *segments = new device_vector<unsigned int>[overlap_depth];
+        device_vector<int> *max_key_d = new device_vector<int>[overlap_depth];
+        device_vector<thrust::tuple<double, size_t>> *max_value_d = new device_vector<thrust::tuple<double, size_t>>[overlap_depth];
+        host_vector<int> *max_key = new host_vector<int>[overlap_depth];
+        host_vector<thrust::tuple<double, size_t>> *max_value = new host_vector<thrust::tuple<double, size_t>>[overlap_depth];
+        device_vector<float> *fvalue = new device_vector<float>[overlap_depth];
+        device_vector<int> *position = new device_vector<int>[overlap_depth];
+        device_vector<float> *grad_sorted = new device_vector<float>[overlap_depth];
 
         for(size_t i = 0; i < overlap_depth; ++i){
             cudaStream_t s = streams[i];
