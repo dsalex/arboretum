@@ -346,7 +346,7 @@ namespace arboretum {
 
                         }
                       for(size_t i = 0; i < overlap_depth; ++i){
-                          cudaStreamCreate(&streams[i]);
+                          cudaStreamDestroy(streams[i]);
                       }
 
       }
