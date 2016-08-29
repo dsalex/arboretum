@@ -270,13 +270,14 @@ namespace arboretum {
 
                               printf("271 \n");
 
-
-
                               thrust::counting_iterator<size_t> iter(0);
+
+                              printf("275 \n");
 
                               auto tuple_iterator = thrust::make_zip_iterator(
                                     thrust::make_tuple(gain[circular_fid].begin(),
                                                        iter));
+                              printf("280 \n");
 
                               thrust::reduce_by_key(thrust::cuda::par.on(s),
                                                     segments[circular_fid].begin(),
@@ -286,17 +287,19 @@ namespace arboretum {
                                                     max_value_d[circular_fid].begin(),
                                                     binary_pred,
                                                     binary_op);
+                              printf("290 \n");
 
                               thrust::copy(thrust::cuda::par.on(s),
                                            max_key_d[circular_fid].begin(),
                                            max_key_d[circular_fid].end(),
                                            max_key[circular_fid].begin());
+                              printf("296 \n");
 
                               thrust::copy(thrust::cuda::par.on(s),
                                            max_value_d[circular_fid].begin(),
                                            max_value_d[circular_fid].end(),
                                            max_value[circular_fid].begin());
-                              printf("299 \n");
+                              printf("302 \n");
 
 
 
