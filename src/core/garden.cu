@@ -129,7 +129,7 @@ namespace arboretum {
         typedef thrust::device_vector<double>::iterator ElementDoubleIterator;
         typedef thrust::device_vector<size_t>::iterator ElementIntIterator;
         typedef thrust::device_vector<unsigned int>::iterator IndexIterator;
-        size_t overlap_depth = 2;
+        size_t overlap_depth = 1;
        size_t lenght = 1 << level;
 
         device_vector<double> parent_node_sum(lenght);
