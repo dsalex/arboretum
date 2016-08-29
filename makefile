@@ -1,6 +1,6 @@
 export CXX  = nvcc
 export LDFLAGS= -lm
-export CFLAGS = -O1 -lineinfo -arch=compute_61 -g -G -std=c++11 -ccbin=g++ -Xcompiler -fPIC -Xcompiler -O3
+export CFLAGS = -O1 -lineinfo -arch=compute_61 -g -std=c++11 -ccbin=g++ -Xcompiler -fPIC -Xcompiler -O3
 SLIB = python-wrapper/arboretum_wrapper.so
 OBJ = io.o param.o garden.o
 
