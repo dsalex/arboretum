@@ -195,6 +195,8 @@ namespace arboretum {
                               size_t circular_fid = active_fid % overlap_depth;
                               cudaStream_t s = streams[circular_fid];
 
+                              printf("stream \n");
+
                               thrust::copy(thrust::cuda::par.on(s),
                                            data->sorted_grad[active_fid].begin(),
                                            data->sorted_grad[active_fid].end(),
@@ -215,6 +217,7 @@ namespace arboretum {
                                              position[circular_fid].end(),
                                              row2Node.begin(),
                                              segments[circular_fid].begin());
+                              printf("220 \n");
 
                               thrust::stable_sort_by_key(thrust::cuda::par.on(s),
                                                          segments[circular_fid].begin(),
@@ -238,6 +241,7 @@ namespace arboretum {
                                                             segments[circular_fid].end(),
                                                             one_iter,
                                                             count[circular_fid].begin());
+                              printf("244 \n");
 
                               thrust::permutation_iterator<ElementDoubleIterator, IndexIterator>
                                   parent_node_sum_iter(parent_node_sum.begin(), segments[circular_fid].begin());
@@ -263,6 +267,8 @@ namespace arboretum {
                                                          fvalue[circular_fid].end(),
                                                          fvalue[circular_fid].end() - 1)),
                                   gain_functor(param.min_child_weight));
+
+                              printf("271 \n");
 
 
 
@@ -290,6 +296,7 @@ namespace arboretum {
                                            max_value_d[circular_fid].begin(),
                                            max_value_d[circular_fid].end(),
                                            max_value[circular_fid].begin());
+                              printf("299 \n");
 
 
 
