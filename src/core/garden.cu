@@ -160,7 +160,8 @@ namespace arboretum {
         std::vector< device_vector<float> > grad_sorted(overlap_depth);
 
         for(size_t i = 0; i < overlap_depth; ++i){
-            cudaStreamCreate(&streams[i]);
+            cudaStream_t s = streams[i];
+            cudaStreamCreate(&s);
             gain[i]  = device_vector<double>(data->rows);
             sum[i]   = device_vector<double>(data->rows);
             count[i] = device_vector<size_t>(data->rows);
