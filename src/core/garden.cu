@@ -159,9 +159,13 @@ namespace arboretum {
         device_vector<int> *position = new device_vector<int>[overlap_depth];
         device_vector<float> *grad_sorted = new device_vector<float>[overlap_depth];
 
+        printf("vectors created");
+
         for(size_t i = 0; i < overlap_depth; ++i){
             cudaStream_t s = streams[i];
+            printf("cudaStream_t s = streams[i];");
             cudaStreamCreate(&s);
+            printf("cudaStreamCreate(&s);");
             gain[i]  = device_vector<double>(data->rows);
             sum[i]   = device_vector<double>(data->rows);
             count[i] = device_vector<size_t>(data->rows);
