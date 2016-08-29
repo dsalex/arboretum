@@ -229,6 +229,7 @@ namespace arboretum {
                                                            thrust::make_tuple(grad_sorted[circular_fid].begin(),
                                                            fvalue[circular_fid].begin() + 1)
                                                            ));
+                              printf("232 \n");
 
 
                               thrust::exclusive_scan_by_key(thrust::cuda::par.on(s),
@@ -236,6 +237,7 @@ namespace arboretum {
                                                             segments[circular_fid].end(),
                                                             grad_sorted[circular_fid].begin(),
                                                             sum[circular_fid].begin());
+                              printf("240 \n");
 
                               thrust::constant_iterator<size_t> one_iter(1);
 
