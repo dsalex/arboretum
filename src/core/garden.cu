@@ -174,8 +174,8 @@ namespace arboretum {
 
             max_key_d[i] = device_vector<int>(1 << level, -1);
             max_value_d[i] = device_vector<thrust::tuple<double, size_t>>(1 << level);
-            max_key_d[i] = host_vector<int>(1 << level, -1);
-            max_value_d[i] = host_vector<thrust::tuple<double, size_t>>(1 << level);
+            max_key[i] = host_vector<int>(1 << level, -1);
+            max_value[i] = host_vector<thrust::tuple<double, size_t>>(1 << level);
           }
 
         thrust::equal_to<unsigned int> binary_pred;
