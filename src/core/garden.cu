@@ -420,8 +420,10 @@ namespace arboretum {
         std::vector<NodeStat> tmp(_nodeStat.size());
         std::copy(_nodeStat.begin(), _nodeStat.end(), tmp.begin());
 
+        size_t len = 1 << (level - 1);
+
         #pragma omp parallel for
-        for(size_t i = 0, len = 1 << (level - 1); i < len; ++i){
+        for(size_t i = 0; i < len; ++i){
             _nodeStat[tree->ChildNode(i + offset, true) - offset_next].count = _bestSplit[i].count;
             _nodeStat[tree->ChildNode(i + offset, true) - offset_next].sum_grad = _bestSplit[i].sum_grad;
 
@@ -441,8 +443,10 @@ namespace arboretum {
             _nodeStat[0].sum_grad = sum;
           }
 
+        size_t len = 1 << level;
+
         #pragma omp parallel for
-        for(size_t i = 0, len = 1 << level; i < len; ++i){
+        for(size_t i = 0; i < len; ++i){
             _nodeStat[i].gain = (_nodeStat[i].sum_grad * _nodeStat[i].sum_grad) / _nodeStat[i].count;
             _bestSplit[i].Clean();
           }
@@ -451,8 +455,10 @@ namespace arboretum {
       void UpdateTree(const int level, RegTree *tree) const {
         unsigned int offset = Node::HeapOffset(level);
 
+        const size_t len = 1 << level;
+
         #pragma omp parallel for
-        for(size_t i = 0, len = 1 << level; i < len; ++i){
+        for(size_t i = 0; i < len; ++i){
             const Split &best = _bestSplit[i];
             tree->nodes[i + offset].threshold = best.split_value;
             tree->nodes[i + offset].fid = best.fid;
