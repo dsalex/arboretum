@@ -38,10 +38,10 @@ namespace arboretum {
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
                i < n;
                i += gridDim.x * blockDim.x){
-          const int p = cub::ThreadLoad<cub::LOAD_CS>(position + i);
+          const int p = cub::ThreadLoad<cub::LOAD_LDG>(position + i);
 
-          cub::ThreadStore<cub::STORE_WT>(out1 + i, cub::ThreadLoad<cub::LOAD_CS>(in1 + p));
-          cub::ThreadStore<cub::STORE_WT>(out2 + i, cub::ThreadLoad<cub::LOAD_CS>(in2 + p));
+          cub::ThreadStore<cub::STORE_WT>(out1 + i, cub::ThreadLoad<cub::LOAD_LDG>(in1 + p));
+          cub::ThreadStore<cub::STORE_WT>(out2 + i, cub::ThreadLoad<cub::LOAD_LDG>(in2 + p));
         }
     }
 
