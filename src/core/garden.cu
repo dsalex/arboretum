@@ -610,25 +610,28 @@ namespace arboretum {
 
           data->Init(param.initial_y, gradFunc);
 
-          if(param.depth + 1 <= sizeof(unsigned short) * CHAR_BIT)
-            _builder = new GardenBuilder<unsigned short, float>(param, data, 2);
-          else if(param.depth + 1 <= sizeof(unsigned int) * CHAR_BIT)
-            _builder = new GardenBuilder<unsigned int, float>(param, data, 2);
-          else if(param.depth + 1 <= sizeof(unsigned long int) * CHAR_BIT)
-            _builder = new GardenBuilder<unsigned long int, float>(param, data, 2);
-          else
-            throw "unsupported depth";
-
-          auto mem_per_rec = _builder->MemoryRequirementsPerRecord();
           size_t total;
           size_t free;
 
           cudaMemGetInfo(&free, &total);
 
+          auto mem_per_rec = _builder->MemoryRequirementsPerRecord();
+
           printf("Total bytes %ld avaliable %ld \n", total, free);
           printf("Memory usage estimation %ld per record %ld in total \n", mem_per_rec, mem_per_rec * data->rows);
 
-          data->TransferToGPU(free * 4 / 5);
+          if(param.depth + 1 <= sizeof(unsigned short) * CHAR_BIT)
+            _builder = new GardenBuilder<unsigned short, float>(param, data, 3);
+          else if(param.depth + 1 <= sizeof(unsigned int) * CHAR_BIT)
+            _builder = new GardenBuilder<unsigned int, float>(param, data, 3);
+          else if(param.depth + 1 <= sizeof(unsigned long int) * CHAR_BIT)
+            _builder = new GardenBuilder<unsigned long int, float>(param, data, 3);
+          else
+            throw "unsupported depth";
+
+          cudaMemGetInfo(&free, &total);
+
+          data->TransferToGPU(free * 9 / 10);
 
           _init = true;
         }
