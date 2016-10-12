@@ -47,22 +47,24 @@ namespace arboretum {
 
     template <class node_type, class float_type>
     __global__ void gain_kernel(const float_type *left_sum, const float *fvalues,
-                                const node_type *segments, const cub::TexObjInputIterator<float_type> parent_sum_iter,
-                                const cub::TexObjInputIterator<int> parent_count_iter, const size_t n, const GainFunctionParameters parameters,
+                                const node_type *segments, float_type* parent_sum_iter,
+                                int* parent_count_iter, const size_t n, const GainFunctionParameters parameters,
                                 float_type *gain){
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
                i < n;
                i += gridDim.x * blockDim.x){
           const node_type segment = cub::ThreadLoad<cub::LOAD_CV>(segments + i);
 
-          const float_type left_sum_offset = parent_sum_iter[segment];
+          const float_type left_sum_offset = cub::ThreadLoad<cub::LOAD_CA>(parent_sum_iter + segment);
           const float_type left_sum_value = cub::ThreadLoad<cub::LOAD_CV>(left_sum + i) - left_sum_offset;
 
-          const size_t left_count_offset = parent_count_iter[segment];
+          const size_t left_count_offset = cub::ThreadLoad<cub::LOAD_CA>(parent_count_iter + segment);
           const size_t left_count_value = i - left_count_offset;
 
-          const float_type total_sum = parent_sum_iter[segment + 1] - parent_sum_iter[segment];
-          const size_t total_count = parent_count_iter[segment + 1] - parent_count_iter[segment];
+          const float_type total_sum = cub::ThreadLoad<cub::LOAD_CA>(parent_sum_iter + segment + 1) -
+              cub::ThreadLoad<cub::LOAD_CA>(parent_sum_iter + segment);
+          const size_t total_count = cub::ThreadLoad<cub::LOAD_CA>(parent_count_iter + segment + 1) -
+              cub::ThreadLoad<cub::LOAD_CA>(parent_count_iter + segment);
 
           const float fvalue = cub::ThreadLoad<cub::LOAD_CV>(fvalues + i + 1);
           const float fvalue_prev = cub::ThreadLoad<cub::LOAD_CV>(fvalues + i);
@@ -330,11 +332,11 @@ namespace arboretum {
           parent_node_count = parent_node_count_h;
         }
 
-        cub::TexObjInputIterator<float_type> parent_sum_iter;
-        parent_sum_iter.BindTexture(thrust::raw_pointer_cast(parent_node_sum.data()), sizeof(float_type) * (lenght + 1));
+//        cub::TexObjInputIterator<float_type> parent_sum_iter;
+//        parent_sum_iter.BindTexture(thrust::raw_pointer_cast(parent_node_sum.data()), sizeof(float_type) * (lenght + 1));
 
-        cub::TexObjInputIterator<int> parent_count_iter;
-        parent_count_iter.BindTexture(thrust::raw_pointer_cast(parent_node_count.data()), sizeof(int) * (lenght + 1));
+//        cub::TexObjInputIterator<int> parent_count_iter;
+//        parent_count_iter.BindTexture(thrust::raw_pointer_cast(parent_node_count.data()), sizeof(int) * (lenght + 1));
 
 
 
@@ -452,8 +454,8 @@ namespace arboretum {
                               gain_kernel<<<gridSizeGain, blockSizeGain, 0, s >>>(thrust::raw_pointer_cast(sum[circular_fid].data()),
                                                                           thrust::raw_pointer_cast(fvalue_sorted[circular_fid].data()),
                                                                           thrust::raw_pointer_cast(segments_sorted[circular_fid].data()),
-                                                                          parent_sum_iter,
-                                                                          parent_count_iter,
+                                                                          thrust::raw_pointer_cast(parent_node_sum.data()),
+                                                                          thrust::raw_pointer_cast(parent_node_count.data()),
                                                                           data->rows,
                                                                           gain_param,
                                                                           thrust::raw_pointer_cast(gain[circular_fid].data()));
