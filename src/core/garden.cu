@@ -40,8 +40,8 @@ namespace arboretum {
                i += gridDim.x * blockDim.x){
           const int p = cub::ThreadLoad<cub::LOAD_LDG>(position + i);
 
-          cub::ThreadStore<cub::STORE_WT>(out1 + i, cub::ThreadLoad<cub::LOAD_CS>(in1 + p));
-          cub::ThreadStore<cub::STORE_WT>(out2 + i, cub::ThreadLoad<cub::LOAD_CS>(in2 + p));
+          cub::ThreadStore<cub::STORE_WT>(out1 + i, cub::ThreadLoad<cub::LOAD_LDG>(in1 + p));
+          cub::ThreadStore<cub::STORE_WT>(out2 + i, cub::ThreadLoad<cub::LOAD_LDG>(in2 + p));
         }
     }
 
@@ -53,10 +53,10 @@ namespace arboretum {
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
                i < n;
                i += gridDim.x * blockDim.x){
-          const node_type segment = cub::ThreadLoad<cub::LOAD_CS>(segments + i);
+          const node_type segment = cub::ThreadLoad<cub::LOAD_LDG>(segments + i);
 
           const float_type left_sum_offset = parent_sum_iter[segment];
-          const float_type left_sum_value = cub::ThreadLoad<cub::LOAD_CS>(left_sum + i) - left_sum_offset;
+          const float_type left_sum_value = cub::ThreadLoad<cub::LOAD_LDG>(left_sum + i) - left_sum_offset;
 
           const size_t left_count_offset = parent_count_iter[segment];
           const size_t left_count_value = i - left_count_offset;
@@ -64,8 +64,8 @@ namespace arboretum {
           const float_type total_sum = parent_sum_iter[segment + 1] - parent_sum_iter[segment];
           const size_t total_count = parent_count_iter[segment + 1] - parent_count_iter[segment];
 
-          const float fvalue = cub::ThreadLoad<cub::LOAD_CS>(fvalues + i + 1);
-          const float fvalue_prev = cub::ThreadLoad<cub::LOAD_CS>(fvalues + i);
+          const float fvalue = cub::ThreadLoad<cub::LOAD_LDG>(fvalues + i + 1);
+          const float fvalue_prev = cub::ThreadLoad<cub::LOAD_LDG>(fvalues + i);
           const size_t right_count = total_count - left_count_value;
 
           float_type val = 0.0;
