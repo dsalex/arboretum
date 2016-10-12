@@ -615,10 +615,7 @@ namespace arboretum {
 
           cudaMemGetInfo(&free, &total);
 
-          auto mem_per_rec = _builder->MemoryRequirementsPerRecord();
-
           printf("Total bytes %ld avaliable %ld \n", total, free);
-          printf("Memory usage estimation %ld per record %ld in total \n", mem_per_rec, mem_per_rec * data->rows);
 
           if(param.depth + 1 <= sizeof(unsigned short) * CHAR_BIT)
             _builder = new GardenBuilder<unsigned short, float>(param, data, 3);
@@ -628,6 +625,10 @@ namespace arboretum {
             _builder = new GardenBuilder<unsigned long int, float>(param, data, 3);
           else
             throw "unsupported depth";
+
+          auto mem_per_rec = _builder->MemoryRequirementsPerRecord();
+
+          printf("Memory usage estimation %ld per record %ld in total \n", mem_per_rec, mem_per_rec * data->rows);
 
           cudaMemGetInfo(&free, &total);
 
