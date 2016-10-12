@@ -55,16 +55,16 @@ namespace arboretum {
                i += gridDim.x * blockDim.x){
           const node_type segment = cub::ThreadLoad<cub::LOAD_CV>(segments + i);
 
-          const float_type left_sum_offset = cub::ThreadLoad<cub::LOAD_CA>(parent_sum_iter + segment);
+          const float_type left_sum_offset = cub::ThreadLoad<cub::LOAD_CG>(parent_sum_iter + segment);
           const float_type left_sum_value = cub::ThreadLoad<cub::LOAD_CV>(left_sum + i) - left_sum_offset;
 
-          const size_t left_count_offset = cub::ThreadLoad<cub::LOAD_CA>(parent_count_iter + segment);
+          const size_t left_count_offset = cub::ThreadLoad<cub::LOAD_CG>(parent_count_iter + segment);
           const size_t left_count_value = i - left_count_offset;
 
-          const float_type total_sum = cub::ThreadLoad<cub::LOAD_CA>(parent_sum_iter + segment + 1) -
-              cub::ThreadLoad<cub::LOAD_CA>(parent_sum_iter + segment);
-          const size_t total_count = cub::ThreadLoad<cub::LOAD_CA>(parent_count_iter + segment + 1) -
-              cub::ThreadLoad<cub::LOAD_CA>(parent_count_iter + segment);
+          const float_type total_sum = cub::ThreadLoad<cub::LOAD_CG>(parent_sum_iter + segment + 1) -
+              cub::ThreadLoad<cub::LOAD_CG>(parent_sum_iter + segment);
+          const size_t total_count = cub::ThreadLoad<cub::LOAD_CG>(parent_count_iter + segment + 1) -
+              cub::ThreadLoad<cub::LOAD_CG>(parent_count_iter + segment);
 
           const float fvalue = cub::ThreadLoad<cub::LOAD_CV>(fvalues + i + 1);
           const float fvalue_prev = cub::ThreadLoad<cub::LOAD_CV>(fvalues + i);
