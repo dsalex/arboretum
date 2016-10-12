@@ -68,12 +68,15 @@ namespace arboretum {
           const float fvalue_prev = cub::ThreadLoad<cub::LOAD_LDG>(fvalues + i);
           const size_t right_count = total_count - left_count_value;
 
+          float_type val = 0.0;
+
           if(left_count_value >= parameters.min_wieght && right_count >= parameters.min_wieght && fvalue != fvalue_prev){
               const size_t d = left_count_value * total_count * (total_count - left_count_value);
               const float_type top = total_count * left_sum_value - left_count_value * total_sum;
-              cub::ThreadStore<cub::STORE_WT>(gain + i, top*top/d);
+              val = top*top/d;
+              cub::ThreadStore<cub::STORE_WT>(gain + i, val);
             } else {
-              cub::ThreadStore<cub::STORE_WT>(gain + i, 0.0);
+              cub::ThreadStore<cub::STORE_WT>(gain + i, val);
             }
           }
     }
