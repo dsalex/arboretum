@@ -33,6 +33,20 @@ namespace arboretum {
     GainFunctionParameters(const unsigned int min_wieght) : min_wieght(min_wieght) {}
    };
 
+    template <class type1>
+    __global__ void gather_kernel_opt(const int *position, const type1 *in1, type1 *out1, const size_t n){
+      const int partitionSize = 1024*1024*64;
+
+      for(size_t partition = 0; partition < n + partitionSize; partition += partitionSize)
+      for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
+               i < n;
+               i += gridDim.x * blockDim.x){
+          const int pos = position[i];
+          if(pos >= partition && pos < (partition + partitionSize))
+          out1[i] = in1[pos];
+        }
+    }
+
     template <class type1, class type2>
     __global__ void gather_kernel(const int *position, const type1 *in1, type1 *out1, type2 *in2, type2 *out2, const size_t n){
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -90,7 +104,7 @@ namespace arboretum {
 
         minGridSize = 0;
 
-        cudaOccupancyMaxPotentialBlockSize( &minGridSize, &blockSizeGather, gather_kernel<node_type, float_type>, 0, 0);
+        cudaOccupancyMaxPotentialBlockSize( &minGridSize, &blockSizeGather, gather_kernel_opt<float_type>, 0, 0);
         gridSizeGather = (data->rows + blockSizeGather - 1) / blockSizeGather;
 
         row2Node.resize(data->rows);
@@ -374,9 +388,12 @@ namespace arboretum {
 
                               cudaStreamSynchronize(s);
 
-                              gather_kernel<<<gridSizeGather, blockSizeGather, 0, s >>>(thrust::raw_pointer_cast(index_tmp->data()),
+                              gather_kernel_opt<<<gridSizeGather, blockSizeGather, 0, s >>>(thrust::raw_pointer_cast(index_tmp->data()),
                                                                           thrust::raw_pointer_cast(row2Node.data()),
                                                                           thrust::raw_pointer_cast(segments[circular_fid].data()),
+                                                                          data->rows);
+
+                              gather_kernel_opt<<<gridSizeGather, blockSizeGather, 0, s >>>(thrust::raw_pointer_cast(index_tmp->data()),
                                                                           thrust::raw_pointer_cast(grad_d.data()),
                                                                           thrust::raw_pointer_cast(grad_sorted[circular_fid].data()),
                                                                           data->rows);
