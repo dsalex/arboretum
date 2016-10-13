@@ -35,15 +35,16 @@ namespace arboretum {
 
     template <class type1>
     __global__ void gather_kernel_opt(const int *position, const type1 *in1, type1 *out1, const size_t n){
-      const size_t partitionSize = 1024*1024*512;
+      const size_t partitionSize = 1024*1024;
 
       for(size_t partition = 0; partition < n + partitionSize; partition += partitionSize)
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
                i < n;
                i += gridDim.x * blockDim.x){
           const int pos = position[i];
-          if(pos >= partition && pos < (partition + partitionSize))
-          out1[i] = in1[pos];
+          if(pos >= partition && pos < (partition + partitionSize)){
+            out1[i] = in1[pos];
+            }
         }
     }
 
