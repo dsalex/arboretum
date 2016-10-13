@@ -37,6 +37,7 @@ namespace arboretum {
     __global__ void gather_kernel_opt(const int *position, const type1 *in1, type1 *out1, const size_t n){
       const int partitionSize = 1024*1024*2;
 
+      #pragma unroll
       for(int partition = 0; partition < n + partitionSize; partition += partitionSize)
       for (int i = blockDim.x * blockIdx.x + threadIdx.x;
                i < n;
