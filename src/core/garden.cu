@@ -331,7 +331,7 @@ namespace arboretum {
         parent_sum_iter.BindTexture(thrust::raw_pointer_cast(parent_node_sum.data()), sizeof(float_type) * (lenght + 1));
 
         cudaMemcpyToSymbol(parent_count_const,
-                           thrust::raw_pointer_cast(parent_node_sum_h.data()),
+                           thrust::raw_pointer_cast(parent_node_count_h.data()),
                            sizeof(int) * (lenght + 1));
 
 //        cub::TexObjInputIterator<int> parent_count_iter;
