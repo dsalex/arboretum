@@ -38,9 +38,10 @@ namespace arboretum {
 
     template <class type1, class type2>
     __global__ void gather_kernel(const int* const __restrict__ position, const type1* const __restrict__ in1, type1 *out1, const type2* const __restrict__ in2, type2 *out2, const size_t n){
+      auto gap = gridDim.x * blockDim.x;
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
                i < n;
-               i += gridDim.x * blockDim.x){
+               i += gap){
           out1[i] = in1[position[i]];
           out2[i] = in2[position[i]];
         }
@@ -52,18 +53,15 @@ namespace arboretum {
 //                                const cub::TexObjInputIterator<float_type> parent_sum_iter,
                                 const size_t n, const GainFunctionParameters parameters,
                                 float_type *gain){
+      auto gap = gridDim.x * blockDim.x;
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
                i < n;
-               i += gridDim.x * blockDim.x){
+               i += gap){
           const node_type segment = segments[i];
-
-          const float_type left_sum_offset = parent_sum_const[segment];
-          const float_type left_sum_value = left_sum[i] - left_sum_offset;
 
           const size_t left_count_offset = parent_count_const[segment];
           const size_t left_count_value = i - left_count_offset;
 
-          const float_type total_sum = parent_sum_const[segment + 1] - parent_sum_const[segment];
           const size_t total_count = parent_count_const[segment + 1] - parent_count_const[segment];
 
           const float fvalue = fvalues[i + 1];
@@ -71,6 +69,10 @@ namespace arboretum {
           const size_t right_count = total_count - left_count_value;
 
           if(left_count_value >= parameters.min_wieght && right_count >= parameters.min_wieght && fvalue != fvalue_prev){
+              const float_type left_sum_offset = parent_sum_const[segment];
+              const float_type left_sum_value = left_sum[i] - left_sum_offset;
+              const float_type total_sum = parent_sum_const[segment + 1] - parent_sum_const[segment];
+
               const size_t d = left_count_value * total_count * (total_count - left_count_value);
               const float_type top = total_count * left_sum_value - left_count_value * total_sum;
               gain[i] = top*top/d;
