@@ -33,7 +33,8 @@ namespace arboretum {
     GainFunctionParameters(const unsigned int min_wieght) : min_wieght(min_wieght) {}
    };
 
-    __constant__ int parent_count_const[1 << 14];
+    __constant__ int parent_count_const[1 << 13];
+    __constant__ float parent_sum_const[1 << 13];
 
     template <class type1, class type2>
     __global__ void gather_kernel(const int* const __restrict__ position, const type1* const __restrict__ in1, type1 *out1, const type2* const __restrict__ in2, type2 *out2, const size_t n){
@@ -47,7 +48,8 @@ namespace arboretum {
 
     template <class node_type, class float_type>
     __global__ void gain_kernel(const float_type* const __restrict__ left_sum, const float* const __restrict__ fvalues,
-                                const node_type* const __restrict__ segments, const cub::TexObjInputIterator<float_type> parent_sum_iter,
+                                const node_type* const __restrict__ segments,
+//                                const cub::TexObjInputIterator<float_type> parent_sum_iter,
                                 const size_t n, const GainFunctionParameters parameters,
                                 float_type *gain){
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -55,13 +57,13 @@ namespace arboretum {
                i += gridDim.x * blockDim.x){
           const node_type segment = segments[i];
 
-          const float_type left_sum_offset = parent_sum_iter[segment];
+          const float_type left_sum_offset = parent_sum_const[segment];
           const float_type left_sum_value = left_sum[i] - left_sum_offset;
 
           const size_t left_count_offset = parent_count_const[segment];
           const size_t left_count_value = i - left_count_offset;
 
-          const float_type total_sum = parent_sum_iter[segment + 1] - parent_sum_iter[segment];
+          const float_type total_sum = parent_sum_const[segment + 1] - parent_sum_const[segment];
           const size_t total_count = parent_count_const[segment + 1] - parent_count_const[segment];
 
           const float fvalue = fvalues[i + 1];
@@ -327,8 +329,12 @@ namespace arboretum {
           parent_node_count = parent_node_count_h;
         }
 
-        cub::TexObjInputIterator<float_type> parent_sum_iter;
-        parent_sum_iter.BindTexture(thrust::raw_pointer_cast(parent_node_sum.data()), sizeof(float_type) * (lenght + 1));
+//        cub::TexObjInputIterator<float_type> parent_sum_iter;
+//        parent_sum_iter.BindTexture(thrust::raw_pointer_cast(parent_node_sum.data()), sizeof(float_type) * (lenght + 1));
+
+        cudaMemcpyToSymbol(parent_sum_const,
+                           thrust::raw_pointer_cast(parent_node_sum_h.data()),
+                           sizeof(float) * (lenght + 1));
 
         cudaMemcpyToSymbol(parent_count_const,
                            thrust::raw_pointer_cast(parent_node_count_h.data()),
@@ -453,7 +459,6 @@ namespace arboretum {
                               gain_kernel<<<gridSizeGain, blockSizeGain, 0, s >>>(thrust::raw_pointer_cast(sum[circular_fid].data()),
                                                                           thrust::raw_pointer_cast(fvalue_sorted[circular_fid].data()),
                                                                           thrust::raw_pointer_cast(segments_sorted[circular_fid].data()),
-                                                                          parent_sum_iter,
                                                                           data->rows,
                                                                           gain_param,
                                                                           thrust::raw_pointer_cast(gain[circular_fid].data()));
