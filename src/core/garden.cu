@@ -63,8 +63,8 @@ namespace arboretum {
 
           const size_t total_count = parent_count_const[segment + 1] - parent_count_const[segment];
 
-          const float fvalue = cub::ThreadLoad<cub::STORE_CS>(fvalues + i + 1);
-          const float fvalue_prev =cub::ThreadLoad<cub::STORE_CS>(fvalues + i);
+          const float fvalue = cub::ThreadLoad<cub::LOAD_CS>(fvalues + i + 1);
+          const float fvalue_prev = cub::ThreadLoad<cub::LOAD_CS>(fvalues + i);
           const size_t right_count = total_count - left_count_value;
           float g = 0.0;
 
