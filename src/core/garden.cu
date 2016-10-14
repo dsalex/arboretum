@@ -623,11 +623,11 @@ namespace arboretum {
           data->Init(param.initial_y, gradFunc);
 
           if(param.depth + 1 <= sizeof(unsigned short) * CHAR_BIT)
-            _builder = new GardenBuilder<unsigned short, float>(param, data, 3);
+            _builder = new GardenBuilder<unsigned short, float>(param, data, 1);
           else if(param.depth + 1 <= sizeof(unsigned int) * CHAR_BIT)
-            _builder = new GardenBuilder<unsigned int, float>(param, data, 3);
+            _builder = new GardenBuilder<unsigned int, float>(param, data, 1);
           else if(param.depth + 1 <= sizeof(unsigned long int) * CHAR_BIT)
-            _builder = new GardenBuilder<unsigned long int, float>(param, data, 3);
+            _builder = new GardenBuilder<unsigned long int, float>(param, data, 1);
           else
             throw "unsupported depth";
 
