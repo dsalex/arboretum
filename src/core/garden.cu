@@ -43,9 +43,7 @@ namespace arboretum {
                i < n;
                i += gridDim.x * blockDim.x){
           const unsigned int pos = position[i];
-          if(pos - partition > partitionSize) continue;
-
-          out1[i] = in1[pos];
+          out1[pos] =  pos - partition <= partitionSize ? in1[pos] : ou1[pos];
         }
     }
 
