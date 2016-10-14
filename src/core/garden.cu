@@ -42,7 +42,7 @@ namespace arboretum {
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
                i < n;
                i += gap){
-          out1[i] = in1[position[i]];
+          cub::ThreadStore<cub::STORE_WT>(out1 + i, in1[position[i]]);
         }
     }
 
@@ -63,9 +63,10 @@ namespace arboretum {
 
           const size_t total_count = parent_count_const[segment + 1] - parent_count_const[segment];
 
-          const float fvalue = fvalues[i + 1];
-          const float fvalue_prev = fvalues[i];
+          const float fvalue = cub::ThreadLoad<cub::STORE_CS>(fvalues + i + 1);
+          const float fvalue_prev =cub::ThreadLoad<cub::STORE_CS>(fvalues + i);
           const size_t right_count = total_count - left_count_value;
+          float g = 0.0;
 
           if(left_count_value >= parameters.min_wieght && right_count >= parameters.min_wieght && fvalue != fvalue_prev){
               const float_type left_sum_offset = parent_sum_const[segment];
@@ -74,10 +75,9 @@ namespace arboretum {
 
               const size_t d = left_count_value * total_count * (total_count - left_count_value);
               const float_type top = total_count * left_sum_value - left_count_value * total_sum;
-              gain[i] = top*top/d;
-            } else {
-              gain[i] = 0.0;
+              g = top*top/d;
             }
+          cub::ThreadStore<cub::STORE_WT>(gain + i, g);
           }
     }
 
