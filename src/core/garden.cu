@@ -34,7 +34,7 @@ namespace arboretum {
    };
 
     template <class type1, class type2>
-    __global__ void gather_kernel(const int *position, const type1 *in1, type1 *out1, type2 *in2, type2 *out2, const size_t n){
+    __global__ void gather_kernel(const int* const __restrict__ position, const type1* const __restrict__ in1, type1 *out1, const type2* const __restrict__ in2, type2 *out2, const size_t n){
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
                i < n;
                i += gridDim.x * blockDim.x){
@@ -44,8 +44,8 @@ namespace arboretum {
     }
 
     template <class node_type, class float_type>
-    __global__ void gain_kernel(const float_type *left_sum, const float *fvalues,
-                                const node_type *segments, const cub::TexObjInputIterator<float_type> parent_sum_iter,
+    __global__ void gain_kernel(const float_type* const __restrict__ left_sum, const float* const __restrict__ fvalues,
+                                const node_type* const __restrict__ segments, const cub::TexObjInputIterator<float_type> parent_sum_iter,
                                 const cub::TexObjInputIterator<int> parent_count_iter, const size_t n, const GainFunctionParameters parameters,
                                 float_type *gain){
       for (size_t i = blockDim.x * blockIdx.x + threadIdx.x;
